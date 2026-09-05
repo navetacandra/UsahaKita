@@ -735,11 +735,24 @@ export class TenantDO extends DurableObject {
     `).toArray();
   }
 
-  async seed(): Promise<{ seeded: boolean; message: string; counts: Record<string, number> }> {
+  async seed(force = false): Promise<{ seeded: boolean; message: string; counts: Record<string, number> }> {
     const existing = this.sql.exec('SELECT COUNT(*) as count FROM materials').one();
     const materialCount = Number(existing.count);
-    if (materialCount > 0) {
+    if (materialCount > 0 && !force) {
       return { seeded: false, message: 'Tenant database already seeded', counts: { materials: materialCount } };
+    }
+
+    if (force) {
+      this.sql.exec('DELETE FROM production_materials');
+      this.sql.exec('DELETE FROM bom_materials');
+      this.sql.exec('DELETE FROM sale_items');
+      this.sql.exec('DELETE FROM productions');
+      this.sql.exec('DELETE FROM sales');
+      this.sql.exec('DELETE FROM boms');
+      this.sql.exec('DELETE FROM inventory_movements');
+      this.sql.exec('DELETE FROM ai_insights');
+      this.sql.exec('DELETE FROM products');
+      this.sql.exec('DELETE FROM materials');
     }
 
     const statements = getTenantSeedSQL();

@@ -2,7 +2,6 @@ import { Hono } from 'hono';
 import type { Env } from '../types';
 import { successResponse, errorResponse } from '../lib/response';
 import { authMiddleware, getSession } from '../middleware/auth';
-import { getTenantDo } from '../middleware/tenant';
 
 const auth = new Hono<{ Bindings: Env }>();
 
@@ -11,13 +10,13 @@ auth.post('/register', async (c) => {
   const { email, password, business_name, business_description } = body;
 
   if (!email || !password || !business_name) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'Email, password, and business name are required', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'Email, password, and business name are required'), 422);
   }
   if (password.length < 8) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'Password must be at least 8 characters', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'Password must be at least 8 characters'), 422);
   }
   if (!email.includes('@')) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'Invalid email format', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'Invalid email format'), 422);
   }
 
   const authDoId = c.env.AUTH_DO.idFromName('global');
@@ -32,9 +31,9 @@ auth.post('/register', async (c) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'INTERNAL_ERROR';
     if (msg === 'EMAIL_ALREADY_EXISTS') {
-      return c.json(errorResponse('EMAIL_ALREADY_EXISTS', 'Email already registered', 409), 409);
+      return c.json(errorResponse('EMAIL_ALREADY_EXISTS', 'Email already registered'), 409);
     }
-    return c.json(errorResponse('INTERNAL_ERROR', msg, 500), 500);
+    return c.json(errorResponse('INTERNAL_ERROR', msg), 500);
   }
 });
 
@@ -43,7 +42,7 @@ auth.post('/login', async (c) => {
   const { email, password } = body;
 
   if (!email || !password) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'Email and password are required', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'Email and password are required'), 422);
   }
 
   const authDoId = c.env.AUTH_DO.idFromName('global');
@@ -51,7 +50,7 @@ auth.post('/login', async (c) => {
 
   const result = await authDo.verifyLogin(email, password);
   if (!result) {
-    return c.json(errorResponse('INVALID_CREDENTIALS', 'Invalid email or password', 401), 401);
+    return c.json(errorResponse('INVALID_CREDENTIALS', 'Invalid email or password'), 401);
   }
 
   const session = await authDo.createSession(result.user.id, result.tenant.id);
@@ -68,7 +67,7 @@ auth.get('/me', authMiddleware, async (c) => {
   const tenant = await authDo.getTenantById(session.tenantId);
 
   if (!user || !tenant) {
-    return c.json(errorResponse('RESOURCE_NOT_FOUND', 'User or tenant not found', 404), 404);
+    return c.json(errorResponse('RESOURCE_NOT_FOUND', 'User or tenant not found'), 404);
   }
 
   return c.json(successResponse({
@@ -91,14 +90,17 @@ auth.post('/logout', authMiddleware, async (c) => {
 
 auth.post('/seed', async (c) => {
   try {
+    const body = await c.req.json<{ force?: boolean }>().catch(() => ({}));
+    const force = body.force === true;
+
     const authDoId = c.env.AUTH_DO.idFromName('global');
     const authDo = c.env.AUTH_DO.get(authDoId);
 
-    const authResult = await authDo.seed();
+    const authResult = await authDo.seed(force);
 
     const tenantDoId = c.env.TENANT_DO.idFromName('ten_01');
     const tenantDo = c.env.TENANT_DO.get(tenantDoId);
-    const tenantResult = await tenantDo.seed();
+    const tenantResult = await tenantDo.seed(force);
 
     return c.json(successResponse({
       auth: authResult,
@@ -106,7 +108,7 @@ auth.post('/seed', async (c) => {
     }));
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Seed failed';
-    return c.json(errorResponse('SEED_FAILED', message, 500), 500);
+    return c.json(errorResponse('SEED_FAILED', message), 500);
   }
 });
 

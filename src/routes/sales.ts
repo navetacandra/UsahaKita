@@ -12,12 +12,12 @@ sales.post('/', async (c) => {
   const { items } = body;
 
   if (!items?.length) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'At least one item is required', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'At least one item is required'), 422);
   }
 
   for (const item of items) {
     if (!item.product_id || !item.quantity || item.quantity <= 0) {
-      return c.json(errorResponse('VALIDATION_ERROR', 'Each item needs product_id and positive quantity', 422), 422);
+      return c.json(errorResponse('VALIDATION_ERROR', 'Each item needs product_id and positive quantity'), 422);
     }
   }
 
@@ -27,7 +27,7 @@ sales.post('/', async (c) => {
     return c.json(successResponse(sale), 201);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'INTERNAL_ERROR';
-    return c.json(errorResponse(msg, msg, 409), 409);
+    return c.json(errorResponse(msg, msg), 409);
   }
 });
 

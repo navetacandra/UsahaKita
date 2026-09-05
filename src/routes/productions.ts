@@ -12,7 +12,7 @@ productions.post('/preview', async (c) => {
   const { product_id, target_output_quantity } = body;
 
   if (!product_id || !target_output_quantity || target_output_quantity <= 0) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'product_id and positive target_output_quantity required', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'product_id and positive target_output_quantity required'), 422);
   }
 
   const tenantDo = getTenantDo(c);
@@ -21,7 +21,7 @@ productions.post('/preview', async (c) => {
     return c.json(successResponse(preview));
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'INTERNAL_ERROR';
-    return c.json(errorResponse(msg, msg, 404), 404);
+    return c.json(errorResponse(msg, msg), 404);
   }
 });
 
@@ -37,7 +37,7 @@ productions.post('/', async (c) => {
   const { product_id, bom_id, target_output_quantity, actual_output_quantity, materials, note } = body;
 
   if (!product_id || !bom_id || !target_output_quantity || !actual_output_quantity || !materials?.length) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'Missing required fields', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'Missing required fields'), 422);
   }
 
   const tenantDo = getTenantDo(c);
@@ -47,7 +47,7 @@ productions.post('/', async (c) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'INTERNAL_ERROR';
     const status = msg === 'INSUFFICIENT_MATERIAL_STOCK' ? 409 : msg === 'BOM_PRODUCT_MISMATCH' ? 422 : 500;
-    return c.json(errorResponse(msg, msg, status), status as 400);
+    return c.json(errorResponse(msg, msg), status);
   }
 });
 
@@ -69,7 +69,7 @@ productions.get('/:id', async (c) => {
     return c.json(successResponse(production));
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'RESOURCE_NOT_FOUND';
-    return c.json(errorResponse(msg, msg, 404), 404);
+    return c.json(errorResponse(msg, msg), 404);
   }
 });
 

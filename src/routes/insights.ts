@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { successResponse, errorResponse } from '../lib/response';
-import { authMiddleware, getSession } from '../middleware/auth';
+import { authMiddleware } from '../middleware/auth';
 import { getTenantDo } from '../middleware/tenant';
 
 const insights = new Hono<{ Bindings: Env }>();
@@ -20,18 +20,16 @@ insights.post('/generate', async (c) => {
   const { period_from, period_to } = body;
 
   if (!period_from || !period_to) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'period_from and period_to are required', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'period_from and period_to are required'), 422);
   }
 
   const tenantDo = getTenantDo(c);
 
-  // Gather analytics context
   const salesMetrics = await tenantDo.getSalesMetrics(period_from, period_to);
   const topProducts = await tenantDo.getTopProducts(5);
   const productionVariance = await tenantDo.getProductionVariance();
   const dashboard = await tenantDo.getDashboardSummary(period_from, period_to);
 
-  // Build context for AI
   const context = {
     period: { from: period_from, to: period_to },
     metrics: salesMetrics,
@@ -42,7 +40,6 @@ insights.post('/generate', async (c) => {
 
   let content: { type: string; title: string; body: string }[] = [];
 
-  // Try AI generation if API key available
   const apiKey = c.env.AI_API_KEY;
   if (apiKey) {
     try {
@@ -80,7 +77,6 @@ insights.post('/generate', async (c) => {
     }
   }
 
-  // Rule-based fallback
   if (content.length === 0) {
     const lowStock = (dashboard as Record<string, Record<string, number>>).low_stock;
     if (lowStock.materials > 0) {

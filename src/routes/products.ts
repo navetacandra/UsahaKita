@@ -22,7 +22,7 @@ products.post('/', async (c) => {
   const { name, unit, minimum_stock } = body;
 
   if (!name || !unit) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'Name and unit are required', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'Name and unit are required'), 422);
   }
 
   const tenantDo = getTenantDo(c);
@@ -36,7 +36,7 @@ products.post('/:id/outgoing', async (c) => {
   const { quantity, reason_type, reason_note } = body;
 
   if (!quantity || quantity <= 0 || !reason_type) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'Positive quantity and reason_type are required', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'Positive quantity and reason_type are required'), 422);
   }
 
   const tenantDo = getTenantDo(c);
@@ -45,7 +45,7 @@ products.post('/:id/outgoing', async (c) => {
     return c.json(successResponse(movement), 201);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'INTERNAL_ERROR';
-    return c.json(errorResponse(msg, msg, 409), 409);
+    return c.json(errorResponse(msg, msg), 409);
   }
 });
 

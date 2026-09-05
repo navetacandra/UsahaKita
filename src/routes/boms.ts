@@ -29,7 +29,7 @@ boms.post('/', async (c) => {
   const { name, product_id, output_quantity, output_unit, selling_price_per_unit, materials } = body;
 
   if (!name || !product_id || !output_quantity || !output_unit || !materials?.length) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'Missing required fields', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'Missing required fields'), 422);
   }
 
   const tenantDo = getTenantDo(c);
@@ -38,7 +38,7 @@ boms.post('/', async (c) => {
     return c.json(successResponse(bom), 201);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'INTERNAL_ERROR';
-    return c.json(errorResponse(msg, msg, 422), 422);
+    return c.json(errorResponse(msg, msg), 422);
   }
 });
 
@@ -50,7 +50,7 @@ boms.get('/:id', async (c) => {
     return c.json(successResponse(bom));
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'RESOURCE_NOT_FOUND';
-    return c.json(errorResponse(msg, msg, 404), 404);
+    return c.json(errorResponse(msg, msg), 404);
   }
 });
 
@@ -69,7 +69,7 @@ boms.patch('/:id', async (c) => {
     return c.json(successResponse(bom));
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'INTERNAL_ERROR';
-    return c.json(errorResponse(msg, msg, 404), 404);
+    return c.json(errorResponse(msg, msg), 404);
   }
 });
 

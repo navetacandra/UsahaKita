@@ -22,7 +22,7 @@ materials.post('/', async (c) => {
   const { name, unit, quantity_precision, minimum_stock } = body;
 
   if (!name || !unit) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'Name and unit are required', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'Name and unit are required'), 422);
   }
 
   const tenantDo = getTenantDo(c);
@@ -36,10 +36,10 @@ materials.post('/:id/movements', async (c) => {
   const { type, quantity, reason_type, reason_note } = body;
 
   if (!type || !quantity || quantity <= 0) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'Type and positive quantity are required', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'Type and positive quantity are required'), 422);
   }
   if (type !== 'IN' && type !== 'OUT') {
-    return c.json(errorResponse('VALIDATION_ERROR', 'Type must be IN or OUT', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'Type must be IN or OUT'), 422);
   }
 
   const tenantDo = getTenantDo(c);
@@ -48,7 +48,7 @@ materials.post('/:id/movements', async (c) => {
     return c.json(successResponse(movement), 201);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'INTERNAL_ERROR';
-    return c.json(errorResponse(msg, msg, 409), 409);
+    return c.json(errorResponse(msg, msg), 409);
   }
 });
 

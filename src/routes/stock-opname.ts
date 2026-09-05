@@ -12,10 +12,10 @@ stockOpname.post('/', async (c) => {
   const { item_type, item_id, actual_quantity, note } = body;
 
   if (!item_type || !item_id || actual_quantity === undefined) {
-    return c.json(errorResponse('VALIDATION_ERROR', 'item_type, item_id, and actual_quantity are required', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'item_type, item_id, and actual_quantity are required'), 422);
   }
   if (item_type !== 'MATERIAL' && item_type !== 'PRODUCT') {
-    return c.json(errorResponse('VALIDATION_ERROR', 'item_type must be MATERIAL or PRODUCT', 422), 422);
+    return c.json(errorResponse('VALIDATION_ERROR', 'item_type must be MATERIAL or PRODUCT'), 422);
   }
 
   const tenantDo = getTenantDo(c);
@@ -24,7 +24,7 @@ stockOpname.post('/', async (c) => {
     return c.json(successResponse(opname), 201);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'INTERNAL_ERROR';
-    return c.json(errorResponse(msg, msg, 404), 404);
+    return c.json(errorResponse(msg, msg), 404);
   }
 });
 

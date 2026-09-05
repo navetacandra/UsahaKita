@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { cryptoUtils } from '../lib/crypto';
 import { idGenerator } from '../lib/id';
-import { getAuthSeedSQL } from '../lib/seed';
+
 
 export class AuthDirectoryDO extends DurableObject {
   private sql!: SqlStorage;
@@ -187,17 +187,37 @@ export class AuthDirectoryDO extends DurableObject {
     }
   }
 
-  async seed(): Promise<{ seeded: boolean; message: string; counts: Record<string, number> }> {
+  async seed(force = false): Promise<{ seeded: boolean; message: string; counts: Record<string, number> }> {
     const existing = this.sql.exec('SELECT COUNT(*) as count FROM users').one();
     const userCount = Number(existing.count);
-    if (userCount > 0) {
+    if (userCount > 0 && !force) {
       return { seeded: false, message: 'Auth database already seeded', counts: { users: userCount } };
     }
 
-    const statements = getAuthSeedSQL();
-    for (const sql of statements) {
-      this.sql.exec(sql);
+    if (force) {
+      this.sql.exec('DELETE FROM tenant_members');
+      this.sql.exec('DELETE FROM sessions');
+      this.sql.exec('DELETE FROM tenants');
+      this.sql.exec('DELETE FROM users');
     }
+
+    const defaultPassword = 'password123';
+    const { hash, salt } = await cryptoUtils.hashPassword(defaultPassword);
+
+    this.sql.exec(
+      `INSERT OR IGNORE INTO users (id, email, password_hash, password_salt, created_at) VALUES (?, ?, ?, ?, ?)`,
+      'usr_01', 'owner@tokomaju.com', hash, salt, '2026-09-05T08:00:00.000Z',
+    );
+
+    this.sql.exec(
+      `INSERT OR IGNORE INTO tenants (id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+      'ten_01', 'Toko Maju', 'Usaha produksi dan penjualan makanan rumahan', '2026-09-05T08:00:00.000Z', '2026-09-05T08:00:00.000Z',
+    );
+
+    this.sql.exec(
+      `INSERT OR IGNORE INTO tenant_members (tenant_id, user_id, role, created_at) VALUES (?, ?, ?, ?)`,
+      'ten_01', 'usr_01', 'OWNER', '2026-09-05T08:00:00.000Z',
+    );
 
     const users = Number(this.sql.exec('SELECT COUNT(*) as count FROM users').one().count);
     const tenants = Number(this.sql.exec('SELECT COUNT(*) as count FROM tenants').one().count);
