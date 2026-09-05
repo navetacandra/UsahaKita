@@ -10,7 +10,7 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": ["./client/src/*"]
+      "@/*": ["./apps/web/client/src/*"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true,

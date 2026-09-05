@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { swaggerUI } from '@hono/swagger-ui';
 import YAML from 'yaml';
-import openApiYaml from '../../openapi.yaml?raw';
+import openApiYaml from '../../../../docs/openapi.yaml?raw';
 
 const docs = new Hono();
 const parsedDoc = YAML.parse(openApiYaml);

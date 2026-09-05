@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [cloudflare(), react(), tailwindcss()],
   resolve: {
     alias: {
-      '@': path.resolve(import.meta.dirname, 'client/src'),
+      '@': path.resolve(import.meta.dirname, 'apps/web/client/src'),
     },
   },
 })

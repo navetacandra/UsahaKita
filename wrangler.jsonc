@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "usahakita",
-  "main": "./src/index.tsx",
+  "main": "./apps/api/src/index.tsx",
   "compatibility_date": "2025-08-03",
   "compatibility_flags": ["nodejs_compat"],
 
