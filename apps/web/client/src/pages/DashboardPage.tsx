@@ -30,7 +30,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [sumRes, matRes, prodRes, movRes, insRes] = await Promise.all([
+      const [sumRes, matRes, prodRes, movRes, insRes] = await Promise.allSettled([
         api.dashboard.getSummary(),
         api.materials.list(),
         api.products.list(),
@@ -38,18 +38,18 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
         api.insights.list(),
       ]);
 
-      if (sumRes.success && sumRes.data) setSummary(sumRes.data);
-      if (matRes.success && Array.isArray(matRes.data)) {
-        setLowMaterials(matRes.data.filter((m) => m && m.current_stock <= m.minimum_stock));
+      if (sumRes.status === 'fulfilled' && sumRes.value.success && sumRes.value.data) setSummary(sumRes.value.data);
+      if (matRes.status === 'fulfilled' && matRes.value.success && Array.isArray(matRes.value.data)) {
+        setLowMaterials(matRes.value.data.filter((m) => m && m.current_stock <= m.minimum_stock));
       }
-      if (prodRes.success && Array.isArray(prodRes.data)) {
-        setLowProducts(prodRes.data.filter((p) => p && p.current_stock <= p.minimum_stock));
+      if (prodRes.status === 'fulfilled' && prodRes.value.success && Array.isArray(prodRes.value.data)) {
+        setLowProducts(prodRes.value.data.filter((p) => p && p.current_stock <= p.minimum_stock));
       }
-      if (movRes.success && Array.isArray(movRes.data)) {
-        setRecentMovements(movRes.data.slice(0, 5));
+      if (movRes.status === 'fulfilled' && movRes.value.success && Array.isArray(movRes.value.data)) {
+        setRecentMovements(movRes.value.data.slice(0, 5));
       }
-      if (insRes.success && Array.isArray(insRes.data) && insRes.data.length > 0) {
-        setLatestInsight(insRes.data[0]);
+      if (insRes.status === 'fulfilled' && insRes.value.success && Array.isArray(insRes.value.data) && insRes.value.data.length > 0) {
+        setLatestInsight(insRes.value.data[0]);
       }
     } catch (err) {
       console.error('Error loading dashboard data', err);

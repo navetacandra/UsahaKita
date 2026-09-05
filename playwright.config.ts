@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 const isLocal = process.env.E2E_LOCAL === 'true';
 const baseURL = isLocal
-  ? (process.env.BASE_URL || 'http://127.0.0.1:8787')
+  ? (process.env.BASE_URL || 'http://localhost:5173')
   : (process.env.BASE_URL || 'https://usahakita.cfexpense-tracker123.workers.dev');
 
 export default defineConfig({
@@ -20,8 +20,8 @@ export default defineConfig({
   },
   webServer: isLocal
     ? {
-        command: 'pnpm exec wrangler dev --port 8787',
-        port: 8787,
+        command: 'pnpm exec vite dev',
+        port: 5173,
         reuseExistingServer: !process.env.CI,
         timeout: 60_000,
       }

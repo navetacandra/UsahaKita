@@ -658,13 +658,19 @@ export class TenantDO extends DurableObject {
     const lowProductCount = this.sql.exec('SELECT COUNT(*) as count FROM products WHERE current_stock <= minimum_stock').one().count as number;
 
     // Latest activity
-    const latestMovement = this.sql.exec('SELECT MAX(created_at) as latest FROM inventory_movements').one();
+    let latest_activity_at = new Date().toISOString();
+    try {
+      const latestMovement = this.sql.exec('SELECT MAX(created_at) as latest FROM inventory_movements').one();
+      if (latestMovement.latest) latest_activity_at = latestMovement.latest as string;
+    } catch {
+      // inventory_movements table may be empty
+    }
 
     return {
       sales: { total: salesTotal, transaction_count: salesCount },
       production: { production_count: productionCount, output_quantity: productionOutput },
       low_stock: { materials: lowMaterialCount, products: lowProductCount },
-      latest_activity_at: latestMovement.latest || new Date().toISOString(),
+      latest_activity_at,
     };
   }
 
@@ -675,8 +681,13 @@ export class TenantDO extends DurableObject {
     const now = this.now();
 
     // Get latest activity
-    const latestMovement = this.sql.exec('SELECT MAX(created_at) as latest FROM inventory_movements').one();
-    const dataAsOf = latestMovement.latest || now;
+    let dataAsOf = now;
+    try {
+      const latestMovement = this.sql.exec('SELECT MAX(created_at) as latest FROM inventory_movements').one();
+      if (latestMovement.latest) dataAsOf = latestMovement.latest as string;
+    } catch {
+      // inventory_movements table may be empty
+    }
 
     this.sql.exec(
       'INSERT INTO ai_insights (id, period_from, period_to, data_as_of, generated_at, prompt_version, content_json, model_metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -688,8 +699,13 @@ export class TenantDO extends DurableObject {
 
   async listInsights(limit = 10): Promise<{ data: Record<string, unknown>[]; meta: Record<string, unknown> }> {
     const insights = this.sql.exec('SELECT * FROM ai_insights ORDER BY generated_at DESC LIMIT ?', limit).toArray();
-    const latestMovement = this.sql.exec('SELECT MAX(created_at) as latest FROM inventory_movements').one();
-    const latestActivityAt = latestMovement.latest;
+    let latestActivityAt: string | null = null;
+    try {
+      const latestMovement = this.sql.exec('SELECT MAX(created_at) as latest FROM inventory_movements').one();
+      latestActivityAt = latestMovement.latest as string | null;
+    } catch {
+      // inventory_movements table may be empty
+    }
 
     const data = insights.map(insight => {
       const generatedAt = insight.generated_at as string;
@@ -707,8 +723,12 @@ export class TenantDO extends DurableObject {
   // ==================== ANALYTICS ====================
 
   async getLatestActivityAt(): Promise<string | null> {
-    const row = this.sql.exec('SELECT MAX(created_at) as latest FROM inventory_movements').one();
-    return (row.latest as string) || null;
+    try {
+      const row = this.sql.exec('SELECT MAX(created_at) as latest FROM inventory_movements').one();
+      return (row.latest as string) || null;
+    } catch {
+      return null;
+    }
   }
 
   async getSalesMetrics(from?: string, to?: string): Promise<Record<string, unknown>> {
