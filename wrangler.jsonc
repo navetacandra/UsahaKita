@@ -2,5 +2,23 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "usahakita",
   "compatibility_date": "2025-08-03",
-  "main": "./src/index.tsx"
+  "main": "./src/index.tsx",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "AUTH_DO",
+        "class_name": "AuthDirectoryDO"
+      },
+      {
+        "name": "TENANT_DO",
+        "class_name": "TenantDO"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["AuthDirectoryDO", "TenantDO"]
+    }
+  ]
 }

@@ -1,0 +1,935 @@
+{
+  "plan_name": "usahakita-frontend-plan",
+  "version": "1.0.0",
+  "project": {
+    "name": "UsahaKita",
+    "type": "multi-tenant micro ERP web application",
+    "target_users": "UMKM grassroots dan pengguna awam",
+    "principles": [
+      "Sederhana",
+      "Tidak terlalu ramai",
+      "Ramah pengguna awam",
+      "Neobrutalism yang terkontrol",
+      "Biru sebagai warna utama",
+      "Berorientasi pada tindakan",
+      "Data bisnis harus mudah dipahami"
+    ]
+  },
+  "platform": {
+    "frontend": "Vite",
+    "backend_integration": "Hono API pada Cloudflare Workers",
+    "runtime": "Cloudflare Workers",
+    "recommended_architecture": "SPA frontend terintegrasi dengan Hono API pada project Vite/Workers; Cloudflare Vite plugin merupakan pola yang direkomendasikan untuk full-stack Workers saat ini.",
+    "source": "https://hono.dev/docs/getting-started/cloudflare-workers-vite"
+  },
+  "architecture": {
+    "routing": {
+      "public": [
+        "/login",
+        "/register"
+      ],
+      "protected": [
+        "/",
+        "/dashboard",
+        "/inventory/materials",
+        "/inventory/products",
+        "/inventory/movements",
+        "/inventory/stock-opname",
+        "/bom",
+        "/bom/new",
+        "/bom/:id",
+        "/production",
+        "/production/new",
+        "/production/:id",
+        "/pos",
+        "/sales",
+        "/insights",
+        "/settings/business"
+      ]
+    },
+    "frontend_layers": [
+      "Pages",
+      "Feature components",
+      "UI components",
+      "API client",
+      "Query/cache layer",
+      "Form validation",
+      "Session/auth state",
+      "Formatting utilities"
+    ],
+    "api_client_rules": {
+      "base_path": "/api/v1",
+      "credentials": "include",
+      "content_type": "application/json",
+      "response_handling": "Semua response harus diproses berdasarkan status HTTP dan schema response.",
+      "auth_expired": "Jika API mengembalikan 401, bersihkan session client dan arahkan ke /login.",
+      "validation_error": "Jika 400/422, tampilkan pesan pada field terkait tanpa menghilangkan input user.",
+      "server_error": "Jika 500, tampilkan pesan sederhana dan opsi retry."
+    }
+  },
+  "design_system": {
+    "style": "controlled neobrutalism",
+    "brand_color": "blue",
+    "rules": {
+      "visual_hierarchy": "CTA dan status aktif menggunakan biru; area data tetap dominan putih atau neutral.",
+      "borders": "Gunakan border tegas pada card dan tombol tetapi jangan pada setiap elemen.",
+      "shadows": "Gunakan offset shadow sederhana pada elemen penting.",
+      "typography": "Judul tegas, isi mudah dibaca, hindari terlalu banyak ukuran font.",
+      "density": "Low to medium density.",
+      "mobile": "POS dan produksi harus nyaman digunakan pada mobile.",
+      "desktop": "Dashboard dan inventory memanfaatkan ruang desktop tanpa menjadi terlalu padat."
+    }
+  },
+  "global_ux_rules": {
+    "language": "Bahasa Indonesia",
+    "technical_terms": {
+      "BoM": "Tampilkan sebagai 'Resep & Komposisi' dan BoM sebagai istilah sekunder.",
+      "inventory": "Tampilkan sebagai 'Stok'.",
+      "production_order": "Tampilkan sebagai 'Produksi'.",
+      "stock_adjustment": "Tampilkan sebagai 'Penyesuaian Stok'."
+    },
+    "forms": [
+      "Gunakan default value yang masuk akal.",
+      "Tampilkan unit di dekat input quantity.",
+      "Gunakan preview sebelum transaksi irreversible.",
+      "Jangan meminta user melakukan kalkulasi yang dapat dilakukan sistem."
+    ],
+    "destructive_actions": "Memerlukan confirmation dialog dengan ringkasan perubahan.",
+    "empty_state": "Jelaskan apa yang harus dilakukan berikutnya dengan satu CTA utama.",
+    "loading": "Gunakan skeleton atau inline loading, bukan full-screen spinner kecuali saat autentikasi.",
+    "toast": "Gunakan untuk hasil aksi singkat; detail penting tetap tampil pada halaman."
+  },
+  "pages": {
+    "register": {
+      "purpose": "Membuat akun dan tenant usaha baru.",
+      "fields": [
+        {
+          "name": "email",
+          "required": true,
+          "type": "email"
+        },
+        {
+          "name": "password",
+          "required": true,
+          "type": "password"
+        },
+        {
+          "name": "business_name",
+          "required": true,
+          "type": "text"
+        },
+        {
+          "name": "business_description",
+          "required": false,
+          "type": "textarea"
+        }
+      ],
+      "cta": "Buat akun"
+    },
+    "login": {
+      "purpose": "Autentikasi user.",
+      "fields": [
+        "email",
+        "password"
+      ],
+      "cta": "Masuk",
+      "secondary_action": "Daftar usaha baru"
+    },
+    "dashboard": {
+      "purpose": "Memberi gambaran kondisi usaha tanpa membanjiri user dengan grafik.",
+      "sections": [
+        "Penjualan periode terpilih",
+        "Produksi periode terpilih",
+        "Material menipis",
+        "Produk dengan stok rendah",
+        "Aktivitas terbaru",
+        "Insight AI terbaru"
+      ],
+      "primary_questions": [
+        "Bagaimana kondisi penjualan?",
+        "Apa yang sedang diproduksi?",
+        "Apa yang perlu diperhatikan?"
+      ],
+      "api_contracts": [
+        "GET /api/v1/dashboard/summary",
+        "GET /api/v1/insights"
+      ]
+    },
+    "materials": {
+      "purpose": "Mengelola material dan stok bahan.",
+      "actions": [
+        "Tambah material",
+        "Edit material",
+        "Catat stok masuk",
+        "Catat stok keluar",
+        "Lihat riwayat stok",
+        "Stok opname"
+      ],
+      "table_columns": [
+        "Nama",
+        "Stok",
+        "Unit",
+        "Batas minimum",
+        "Status"
+      ]
+    },
+    "products": {
+      "purpose": "Mengelola barang jadi.",
+      "actions": [
+        "Tambah produk",
+        "Edit produk",
+        "Lihat stok",
+        "Catat produk keluar non-penjualan",
+        "Lihat riwayat stok"
+      ],
+      "rules": [
+        "Produk tidak memiliki transaksi stok masuk manual.",
+        "Stok produk bertambah melalui produksi.",
+        "Stok produk berkurang melalui POS atau produk keluar."
+      ]
+    },
+    "stock_opname": {
+      "purpose": "Mencocokkan stok sistem dengan stok fisik.",
+      "flow": [
+        "Pilih material atau produk",
+        "Tampilkan stok sistem",
+        "Masukkan stok aktual",
+        "Hitung selisih otomatis",
+        "Masukkan alasan atau catatan",
+        "Konfirmasi"
+      ],
+      "display": {
+        "system_quantity": "Stok sistem",
+        "actual_quantity": "Stok aktual",
+        "difference": "Selisih"
+      }
+    },
+    "bom_list": {
+      "purpose": "Daftar resep dan komposisi.",
+      "display": [
+        "Nama resep",
+        "Produk hasil",
+        "Output per 1 resep",
+        "Harga jual per satuan",
+        "Status"
+      ]
+    },
+    "bom_editor": {
+      "purpose": "Membuat dan mengubah resep.",
+      "sections": [
+        "Informasi resep",
+        "Produk hasil",
+        "Jumlah output per 1 resep",
+        "Harga jual per satuan",
+        "Material dan quantity"
+      ],
+      "material_fields": [
+        "material_id",
+        "quantity"
+      ],
+      "examples": {
+        "single": {
+          "output_quantity": 20,
+          "unit": "pcs"
+        },
+        "fractional_production": {
+          "bom_output_quantity": 20,
+          "requested_output_quantity": 10,
+          "calculated_bom_multiplier": 0.5
+        }
+      }
+    },
+    "production_create": {
+      "purpose": "Menghasilkan produk dengan menghitung kebutuhan material secara otomatis.",
+      "step_1": {
+        "name": "Pilih produk",
+        "fields": [
+          "product_id",
+          "target_quantity"
+        ]
+      },
+      "step_2": {
+        "name": "Preview kebutuhan resep",
+        "api": "POST /api/v1/productions/preview",
+        "display": [
+          "Target produksi",
+          "Jumlah BoM yang dihitung",
+          "Material",
+          "Hasil kalkulasi",
+          "Jumlah aktual yang digunakan"
+        ]
+      },
+      "step_3": {
+        "name": "Penyesuaian aktual",
+        "rules": [
+          "User dapat mengubah quantity material hasil kalkulasi.",
+          "calculated_quantity tidak boleh hilang.",
+          "actual_quantity menjadi quantity yang digunakan untuk pengurangan stok.",
+          "Material yang hanya dapat berupa bilangan bulat harus ditampilkan sesuai precision unit.",
+          "User tetap memiliki kontrol akhir."
+        ],
+        "example": {
+          "material": "Telur",
+          "calculated_quantity": 3.5,
+          "actual_quantity": 4,
+          "display": "3,5 → 4 butir"
+        }
+      },
+      "step_4": {
+        "name": "Konfirmasi hasil produksi",
+        "fields": [
+          "actual_output_quantity"
+        ],
+        "reason": "Hasil produksi aktual dapat berbeda dari target."
+      },
+      "step_5": {
+        "name": "Submit produksi",
+        "api": "POST /api/v1/productions"
+      },
+      "important_behavior": {
+        "insufficient_stock": "Tidak boleh submit jika material actual usage melebihi stok tersedia.",
+        "stock_reduction": "Gunakan actual material quantity.",
+        "product_increase": "Gunakan actual output quantity."
+      }
+    },
+    "production_detail": {
+      "purpose": "Menampilkan histori produksi dan perbandingan planned vs actual.",
+      "display": [
+        "Produk",
+        "Target output",
+        "Actual output",
+        "BoM multiplier",
+        "Material calculated quantity",
+        "Material actual quantity",
+        "Selisih",
+        "Waktu produksi"
+      ]
+    },
+    "pos": {
+      "purpose": "Pencatatan penjualan sederhana.",
+      "flow": [
+        "Tampilkan produk dengan stok tersedia",
+        "Pilih satu atau beberapa produk",
+        "Masukkan quantity",
+        "Periksa ringkasan",
+        "Submit"
+      ],
+      "rules": [
+        "Tidak menjual produk dengan stok tidak mencukupi.",
+        "Submit membuat transaksi penjualan dan mengurangi stok produk.",
+        "POS tidak menangani purchasing, supplier, atau accounting kompleks."
+      ],
+      "api": "POST /api/v1/sales"
+    },
+    "sales_history": {
+      "purpose": "Melihat transaksi penjualan.",
+      "display": [
+        "Waktu",
+        "Nomor transaksi",
+        "Item",
+        "Quantity",
+        "Total"
+      ],
+      "api": "GET /api/v1/sales"
+    },
+    "insights": {
+      "purpose": "Menampilkan AI insight yang tersimpan.",
+      "rules": [
+        "Tidak generate otomatis ketika halaman dibuka.",
+        "Tampilkan waktu insight dibuat.",
+        "Tampilkan waktu data terakhir yang dianalisis jika tersedia.",
+        "Tampilkan indikator jika ada aktivitas bisnis setelah insight dibuat.",
+        "User dapat meminta generate ulang."
+      ],
+      "actions": [
+        "Generate insight baru",
+        "Lihat histori insight"
+      ],
+      "api": [
+        "GET /api/v1/insights",
+        "POST /api/v1/insights/generate"
+      ],
+      "stale_indicator": {
+        "condition": "latest_business_activity_at > generated_at",
+        "message": "Ada data baru sejak insight terakhir dibuat."
+      }
+    },
+    "business_settings": {
+      "purpose": "Mengubah nama dan deskripsi usaha.",
+      "api": "PATCH /api/v1/business"
+    }
+  },
+  "shared_components": {
+    "quantity_input": {
+      "features": [
+        "Unit-aware",
+        "Min/max",
+        "Precision-aware",
+        "Keyboard friendly"
+      ]
+    },
+    "stock_status": [
+      "Aman",
+      "Menipis",
+      "Habis"
+    ],
+    "confirmation_dialog": {
+      "required_for": [
+        "Submit production",
+        "Stock adjustment",
+        "Stock opname",
+        "Product outgoing",
+        "POS submission"
+      ]
+    },
+    "currency": {
+      "locale": "id-ID",
+      "currency": "IDR"
+    }
+  },
+  "api_contract": {
+    "base_url": "/api/v1",
+    "authentication": {
+      "mechanism": "HttpOnly Secure SameSite cookie session",
+      "frontend_rule": "Frontend tidak menyimpan password atau secret session ke localStorage."
+    },
+    "common_response_envelope": {
+      "success": true,
+      "data": {},
+      "meta": {}
+    },
+    "common_error_envelope": {
+      "success": false,
+      "error": {
+        "code": "ERROR_CODE",
+        "message": "Pesan yang dapat dipahami user.",
+        "fields": {}
+      }
+    },
+    "contracts": {
+      "POST /auth/register": {
+        "request": {
+          "email": "owner@example.com",
+          "password": "StrongPassword123!",
+          "business_name": "Toko Maju",
+          "business_description": "Usaha makanan rumahan"
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "user": {
+              "id": "usr_01",
+              "email": "owner@example.com"
+            },
+            "business": {
+              "id": "ten_01",
+              "name": "Toko Maju",
+              "description": "Usaha makanan rumahan"
+            }
+          },
+          "meta": {}
+        }
+      },
+      "POST /auth/login": {
+        "request": {
+          "email": "owner@example.com",
+          "password": "StrongPassword123!"
+        },
+        "response_200": {
+          "success": true,
+          "data": {
+            "user": {
+              "id": "usr_01",
+              "email": "owner@example.com"
+            },
+            "business": {
+              "id": "ten_01",
+              "name": "Toko Maju",
+              "description": "Usaha makanan rumahan"
+            }
+          },
+          "meta": {}
+        }
+      },
+      "GET /auth/me": {
+        "request": {},
+        "response_200": {
+          "success": true,
+          "data": {
+            "user": {
+              "id": "usr_01",
+              "email": "owner@example.com"
+            },
+            "business": {
+              "id": "ten_01",
+              "name": "Toko Maju",
+              "description": "Usaha makanan rumahan"
+            }
+          },
+          "meta": {}
+        }
+      },
+      "POST /auth/logout": {
+        "request": {},
+        "response_204": {}
+      },
+      "PATCH /business": {
+        "request": {
+          "name": "Toko Maju Baru",
+          "description": "Produksi makanan rumahan"
+        },
+        "response_200": {
+          "success": true,
+          "data": {
+            "id": "ten_01",
+            "name": "Toko Maju Baru",
+            "description": "Produksi makanan rumahan"
+          },
+          "meta": {}
+        }
+      },
+      "GET /materials": {
+        "request": {
+          "query": {
+            "page": 1,
+            "limit": 20,
+            "search": "tepung"
+          }
+        },
+        "response_200": {
+          "success": true,
+          "data": [
+            {
+              "id": "mat_01",
+              "name": "Tepung",
+              "unit": "kg",
+              "quantity_precision": 2,
+              "current_stock": 12.5,
+              "minimum_stock": 5
+            }
+          ],
+          "meta": {
+            "page": 1,
+            "limit": 20,
+            "total": 1
+          }
+        }
+      },
+      "POST /materials": {
+        "request": {
+          "name": "Telur",
+          "unit": "pcs",
+          "quantity_precision": 0,
+          "minimum_stock": 20
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "id": "mat_02",
+            "name": "Telur",
+            "unit": "pcs",
+            "quantity_precision": 0,
+            "current_stock": 0,
+            "minimum_stock": 20
+          },
+          "meta": {}
+        }
+      },
+      "POST /materials/:id/movements": {
+        "request": {
+          "type": "IN",
+          "quantity": 10,
+          "reason": "Pembelian bahan"
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "movement_id": "mov_01",
+            "material_id": "mat_01",
+            "type": "IN",
+            "quantity": 10,
+            "stock_before": 12.5,
+            "stock_after": 22.5
+          },
+          "meta": {}
+        }
+      },
+      "GET /products": {
+        "request": {
+          "query": {
+            "page": 1,
+            "limit": 20,
+            "search": "donat"
+          }
+        },
+        "response_200": {
+          "success": true,
+          "data": [
+            {
+              "id": "prd_01",
+              "name": "Donat Coklat",
+              "unit": "pcs",
+              "current_stock": 100,
+              "minimum_stock": 20,
+              "selling_price": 5000
+            }
+          ],
+          "meta": {
+            "page": 1,
+            "limit": 20,
+            "total": 1
+          }
+        }
+      },
+      "POST /products": {
+        "request": {
+          "name": "Donat Coklat",
+          "unit": "pcs",
+          "minimum_stock": 20
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "id": "prd_01",
+            "name": "Donat Coklat",
+            "unit": "pcs",
+            "current_stock": 0,
+            "minimum_stock": 20
+          },
+          "meta": {}
+        }
+      },
+      "POST /products/:id/outgoing": {
+        "request": {
+          "quantity": 5,
+          "reason_type": "DAMAGED",
+          "reason_note": "Kemasan rusak"
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "movement_id": "mov_prd_01",
+            "product_id": "prd_01",
+            "quantity": 5,
+            "reason_type": "DAMAGED",
+            "stock_before": 100,
+            "stock_after": 95
+          },
+          "meta": {}
+        }
+      },
+      "POST /stock-opnames": {
+        "request": {
+          "item_type": "MATERIAL",
+          "item_id": "mat_01",
+          "actual_quantity": 11.5,
+          "note": "Ditemukan selisih saat pengecekan"
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "opname_id": "opn_01",
+            "item_id": "mat_01",
+            "system_quantity": 12.5,
+            "actual_quantity": 11.5,
+            "difference": -1,
+            "stock_after": 11.5
+          },
+          "meta": {}
+        }
+      },
+      "POST /boms": {
+        "request": {
+          "name": "Resep Donat Coklat",
+          "product_id": "prd_01",
+          "output_quantity": 20,
+          "output_unit": "pcs",
+          "selling_price_per_unit": 5000,
+          "materials": [
+            {
+              "material_id": "mat_flour",
+              "quantity": 1
+            },
+            {
+              "material_id": "mat_sugar",
+              "quantity": 0.3
+            },
+            {
+              "material_id": "mat_egg",
+              "quantity": 10
+            }
+          ]
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "id": "bom_01",
+            "name": "Resep Donat Coklat",
+            "product_id": "prd_01",
+            "output_quantity": 20,
+            "output_unit": "pcs",
+            "selling_price_per_unit": 5000,
+            "materials": [
+              {
+                "material_id": "mat_flour",
+                "quantity": 1
+              },
+              {
+                "material_id": "mat_sugar",
+                "quantity": 0.3
+              },
+              {
+                "material_id": "mat_egg",
+                "quantity": 10
+              }
+            ]
+          },
+          "meta": {}
+        }
+      },
+      "POST /productions/preview": {
+        "request": {
+          "product_id": "prd_01",
+          "target_output_quantity": 7
+        },
+        "response_200": {
+          "success": true,
+          "data": {
+            "product_id": "prd_01",
+            "bom_id": "bom_01",
+            "target_output_quantity": 7,
+            "bom_output_quantity": 20,
+            "bom_multiplier": 0.35,
+            "materials": [
+              {
+                "material_id": "mat_flour",
+                "calculated_quantity": 0.35,
+                "unit": "kg",
+                "available_quantity": 5
+              },
+              {
+                "material_id": "mat_sugar",
+                "calculated_quantity": 0.105,
+                "unit": "kg",
+                "available_quantity": 2
+              },
+              {
+                "material_id": "mat_egg",
+                "calculated_quantity": 3.5,
+                "unit": "pcs",
+                "available_quantity": 10
+              }
+            ],
+            "stock_check": {
+              "can_produce": true,
+              "errors": []
+            }
+          },
+          "meta": {}
+        }
+      },
+      "POST /productions": {
+        "request": {
+          "product_id": "prd_01",
+          "target_output_quantity": 7,
+          "actual_output_quantity": 7,
+          "bom_id": "bom_01",
+          "materials": [
+            {
+              "material_id": "mat_flour",
+              "calculated_quantity": 0.35,
+              "actual_quantity": 0.35
+            },
+            {
+              "material_id": "mat_sugar",
+              "calculated_quantity": 0.105,
+              "actual_quantity": 0.105
+            },
+            {
+              "material_id": "mat_egg",
+              "calculated_quantity": 3.5,
+              "actual_quantity": 4
+            }
+          ],
+          "note": "Telur dibulatkan menjadi 4 butir"
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "id": "prod_01",
+            "product_id": "prd_01",
+            "target_output_quantity": 7,
+            "actual_output_quantity": 7,
+            "bom_multiplier": 0.35,
+            "materials": [
+              {
+                "material_id": "mat_flour",
+                "calculated_quantity": 0.35,
+                "actual_quantity": 0.35
+              },
+              {
+                "material_id": "mat_sugar",
+                "calculated_quantity": 0.105,
+                "actual_quantity": 0.105
+              },
+              {
+                "material_id": "mat_egg",
+                "calculated_quantity": 3.5,
+                "actual_quantity": 4
+              }
+            ],
+            "created_at": "2026-09-05T12:00:00Z"
+          },
+          "meta": {}
+        }
+      },
+      "POST /sales": {
+        "request": {
+          "items": [
+            {
+              "product_id": "prd_01",
+              "quantity": 3
+            }
+          ]
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "id": "sale_01",
+            "items": [
+              {
+                "product_id": "prd_01",
+                "quantity": 3,
+                "unit_price": 5000,
+                "subtotal": 15000
+              }
+            ],
+            "total": 15000,
+            "created_at": "2026-09-05T12:30:00Z"
+          },
+          "meta": {}
+        }
+      },
+      "GET /dashboard/summary": {
+        "request": {
+          "query": {
+            "from": "2026-09-01",
+            "to": "2026-09-05"
+          }
+        },
+        "response_200": {
+          "success": true,
+          "data": {
+            "sales": {
+              "total": 1250000,
+              "transaction_count": 28
+            },
+            "production": {
+              "production_count": 12,
+              "output_quantity": 430
+            },
+            "low_stock": {
+              "materials": 3,
+              "products": 1
+            },
+            "latest_activity_at": "2026-09-05T12:30:00Z"
+          },
+          "meta": {}
+        }
+      },
+      "POST /insights/generate": {
+        "request": {
+          "period_from": "2026-09-01",
+          "period_to": "2026-09-05"
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "id": "ins_01",
+            "generated_at": "2026-09-05T12:35:00Z",
+            "data_as_of": "2026-09-05T12:30:00Z",
+            "content": [
+              {
+                "type": "WARNING",
+                "title": "Stok tepung mulai menipis",
+                "body": "Stok tepung saat ini hanya cukup untuk beberapa produksi berikutnya berdasarkan pola produksi terbaru."
+              }
+            ]
+          },
+          "meta": {}
+        }
+      },
+      "GET /insights": {
+        "request": {
+          "query": {
+            "limit": 10
+          }
+        },
+        "response_200": {
+          "success": true,
+          "data": [
+            {
+              "id": "ins_01",
+              "generated_at": "2026-09-05T12:35:00Z",
+              "data_as_of": "2026-09-05T12:30:00Z",
+              "is_stale": true,
+              "content": [
+                {
+                  "type": "WARNING",
+                  "title": "Stok tepung mulai menipis",
+                  "body": "Stok tepung saat ini hanya cukup untuk beberapa produksi berikutnya."
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "latest_business_activity_at": "2026-09-05T12:40:00Z"
+          }
+        }
+      }
+    }
+  },
+  "integration_requirements": {
+    "production": {
+      "preview_then_commit": true,
+      "rule": "Frontend tidak menghitung ulang kebutuhan material secara authoritative. Preview API menjadi sumber nilai kalkulasi.",
+      "override": "Frontend mengirim kembali calculated_quantity yang diterima dan actual_quantity hasil penyesuaian user.",
+      "submit_rule": "Jika data berubah antara preview dan submit, backend harus melakukan validasi ulang."
+    },
+    "pos": {
+      "rule": "Harga dan stok final harus berasal dari backend; frontend hanya menampilkan nilai yang diterima API."
+    },
+    "inventory": {
+      "rule": "Frontend tidak mengubah current_stock secara lokal sebagai sumber kebenaran. Setelah mutation, refetch/invalidate query terkait."
+    },
+    "insight": {
+      "rule": "Insight tersimpan dianggap immutable; generate berikutnya membuat record baru."
+    }
+  },
+  "testing": {
+    "unit": [
+      "Form validation",
+      "Quantity precision",
+      "Production preview rendering",
+      "Production adjustment",
+      "Stale insight detection"
+    ],
+    "integration": [
+      "Register -> Login -> Dashboard",
+      "Material IN -> stock refresh",
+      "Production preview -> adjustment -> commit -> inventory refresh",
+      "POS -> product stock refresh",
+      "Insight generate -> saved insight -> stale indicator"
+    ],
+    "e2e": [
+      "Registrasi tenant baru",
+      "Membuat material dan produk",
+      "Membuat BoM 1 resep menghasilkan >1 produk",
+      "Produksi 0.5 BoM",
+      "Override 3.5 telur menjadi 4",
+      "Penjualan produk",
+      "Stock opname",
+      "Generate insight"
+    ]
+  }
+}

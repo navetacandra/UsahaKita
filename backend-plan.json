@@ -1,0 +1,1342 @@
+{
+  "plan_name": "usahakita-backend-api-plan",
+  "version": "1.0.0",
+  "project": {
+    "name": "UsahaKita",
+    "purpose": "Multi-tenant micro ERP untuk operasi material, resep, produksi, produk jadi, penjualan dan AI insight.",
+    "api_version": "v1"
+  },
+  "platform": {
+    "runtime": "Cloudflare Workers",
+    "framework": "Hono",
+    "build_tool": "Vite",
+    "stateful_storage": "Durable Objects dengan SQLite-backed storage",
+    "routing_layer": "Hono Router pada Worker",
+    "tenant_isolation": "Satu Durable Object stateful instance untuk satu tenant.",
+    "auth_state": "Auth/Directory Durable Object untuk user, tenant membership dan session.",
+    "basis": [
+      "Hono mendukung full-stack Cloudflare Workers + Vite melalui Cloudflare Vite plugin.",
+      "Durable Objects menyediakan stateful compute dan strongly consistent storage yang cocok untuk koordinasi transaksi per tenant.",
+      "SQLite-backed Durable Objects tersedia pada Workers dan dapat digunakan melalui SQL Storage API."
+    ],
+    "sources": [
+      "https://hono.dev/docs/getting-started/cloudflare-workers-vite",
+      "https://developers.cloudflare.com/workers/vite-plugin/",
+      "https://developers.cloudflare.com/durable-objects/concepts/what-are-durable-objects/",
+      "https://developers.cloudflare.com/durable-objects/get-started/"
+    ]
+  },
+  "architecture": {
+    "request_flow": [
+      "Client",
+      "Hono Worker",
+      "Authentication middleware",
+      "Resolve tenant_id",
+      "Resolve Tenant Durable Object",
+      "Execute domain command/query",
+      "Validate business rules",
+      "Atomic SQLite transaction",
+      "Return API response"
+    ],
+    "durable_objects": {
+      "AuthDirectory": {
+        "purpose": [
+          "Global user identity",
+          "Unique email lookup",
+          "User-to-tenant mapping",
+          "Session management"
+        ]
+      },
+      "Tenant": {
+        "purpose": [
+          "Business profile",
+          "Materials",
+          "Products",
+          "Inventory movements",
+          "Stock opname",
+          "BoM",
+          "Production",
+          "Sales",
+          "Dashboard aggregations",
+          "Saved AI insights"
+        ],
+        "naming": "Durable Object ID derived deterministically from tenant_id."
+      }
+    },
+    "consistency_rule": "Semua perubahan yang memengaruhi lebih dari satu entity dalam tenant harus dilakukan dalam satu transaksi SQLite pada Tenant Durable Object.",
+    "tenant_rule": "tenant_id tidak dipercaya dari body request. Tenant selalu berasal dari authenticated session.",
+    "authorization": "Setiap tenant-scoped endpoint hanya dapat mengakses Tenant DO berdasarkan tenant_id session.",
+    "rpc_note": "Cloudflare Workers dan Durable Objects saat ini mendukung native RPC; gunakan RPC hanya untuk komunikasi internal yang benar-benar memerlukannya, sedangkan public API tetap menggunakan HTTP/Hono agar kontrak client stabil."
+  },
+  "security": {
+    "password": {
+      "storage": "Password plaintext tidak pernah disimpan.",
+      "recommended_hash": "PBKDF2-HMAC-SHA-256 melalui Web Crypto API dengan random salt dan cost parameter yang dapat dikonfigurasi.",
+      "minimum_rule": "Password minimal 8 karakter."
+    },
+    "session": {
+      "transport": "HttpOnly Secure SameSite cookie",
+      "token": "Opaque random session token.",
+      "storage": "Simpan hash token/session identifier pada AuthDirectory DO.",
+      "expiration": "Session memiliki expiry.",
+      "logout": "Session di-revoke server-side."
+    },
+    "input_validation": [
+      "Schema validation di boundary API.",
+      "Validasi UUID/ID format.",
+      "Validasi quantity > 0 untuk transaksi.",
+      "Validasi precision unit.",
+      "Validasi stock availability.",
+      "Validasi ownership seluruh entity tenant."
+    ],
+    "ai_security": [
+      "Jangan kirim password, session token, atau secret ke model.",
+      "AI hanya menerima business context yang sudah diagregasi.",
+      "Tenant data harus dibatasi berdasarkan tenant_id.",
+      "AI output tidak boleh menjadi sumber angka bisnis.",
+      "Calculation dan validation dilakukan oleh backend sebelum AI."
+    ]
+  },
+  "data_model": {
+    "users": {
+      "fields": [
+        "id",
+        "email",
+        "password_hash",
+        "password_salt",
+        "created_at"
+      ]
+    },
+    "tenants": {
+      "fields": [
+        "id",
+        "name",
+        "description",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "tenant_members": {
+      "fields": [
+        "tenant_id",
+        "user_id",
+        "role",
+        "created_at"
+      ],
+      "initial_role": "OWNER"
+    },
+    "sessions": {
+      "fields": [
+        "id",
+        "user_id",
+        "tenant_id",
+        "token_hash",
+        "expires_at",
+        "created_at",
+        "revoked_at"
+      ]
+    },
+    "materials": {
+      "fields": [
+        "id",
+        "name",
+        "unit",
+        "quantity_precision",
+        "current_stock",
+        "minimum_stock",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "products": {
+      "fields": [
+        "id",
+        "name",
+        "unit",
+        "current_stock",
+        "minimum_stock",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "inventory_movements": {
+      "fields": [
+        "id",
+        "item_type",
+        "item_id",
+        "movement_type",
+        "quantity",
+        "stock_before",
+        "stock_after",
+        "reason_type",
+        "reason_note",
+        "reference_type",
+        "reference_id",
+        "created_at"
+      ],
+      "movement_types": [
+        "IN",
+        "OUT",
+        "PRODUCTION_CONSUMPTION",
+        "PRODUCTION_OUTPUT",
+        "SALE",
+        "STOCK_OPNAME"
+      ],
+      "reason_types": [
+        "PURCHASE",
+        "DAMAGED",
+        "EXPIRED",
+        "SAMPLE",
+        "INTERNAL_USE",
+        "LOST",
+        "OTHER",
+        "STOCK_OPNAME"
+      ]
+    },
+    "boms": {
+      "fields": [
+        "id",
+        "name",
+        "product_id",
+        "output_quantity",
+        "output_unit",
+        "selling_price_per_unit",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "bom_materials": {
+      "fields": [
+        "bom_id",
+        "material_id",
+        "quantity"
+      ]
+    },
+    "productions": {
+      "fields": [
+        "id",
+        "bom_id",
+        "product_id",
+        "target_output_quantity",
+        "actual_output_quantity",
+        "bom_multiplier",
+        "note",
+        "created_at"
+      ]
+    },
+    "production_materials": {
+      "fields": [
+        "production_id",
+        "material_id",
+        "calculated_quantity",
+        "actual_quantity"
+      ]
+    },
+    "stock_opnames": {
+      "fields": [
+        "id",
+        "item_type",
+        "item_id",
+        "system_quantity",
+        "actual_quantity",
+        "difference",
+        "note",
+        "created_at"
+      ]
+    },
+    "sales": {
+      "fields": [
+        "id",
+        "total",
+        "created_at"
+      ]
+    },
+    "sale_items": {
+      "fields": [
+        "sale_id",
+        "product_id",
+        "quantity",
+        "unit_price",
+        "subtotal"
+      ]
+    },
+    "ai_insights": {
+      "fields": [
+        "id",
+        "period_from",
+        "period_to",
+        "data_as_of",
+        "generated_at",
+        "prompt_version",
+        "content_json",
+        "model_metadata_json"
+      ]
+    }
+  },
+  "core_business_rules": {
+    "inventory": {
+      "material": {
+        "manual_in": true,
+        "manual_out": true,
+        "production_consumption": true,
+        "stock_opname": true
+      },
+      "product": {
+        "manual_in": false,
+        "manual_out": true,
+        "production_output": true,
+        "sale_output": true
+      }
+    },
+    "bom": {
+      "model": "Satu BoM menghasilkan satu produk dengan output_quantity tertentu.",
+      "output_quantity": "Jumlah produk yang dihasilkan oleh satu kali resep.",
+      "selling_price": "Harga jual barang jadi per satuan.",
+      "material_quantity": "Jumlah material yang dibutuhkan untuk satu output_quantity."
+    },
+    "production": {
+      "formula": {
+        "bom_multiplier": "target_output_quantity / bom.output_quantity",
+        "calculated_material_quantity": "bom_material.quantity * bom_multiplier"
+      },
+      "override": {
+        "allowed": true,
+        "stored_fields": [
+          "calculated_quantity",
+          "actual_quantity"
+        ],
+        "stock_consumption": "actual_quantity"
+      },
+      "actual_output": {
+        "allowed": true,
+        "stock_increase": "actual_output_quantity"
+      },
+      "stock_validation": "actual_quantity seluruh material harus <= current_stock saat commit.",
+      "atomicity": "Consumption material, output product, production record dan inventory movements harus commit atau rollback bersama."
+    },
+    "stock_opname": {
+      "formula": "difference = actual_quantity - system_quantity",
+      "effect": "current_stock menjadi actual_quantity.",
+      "audit": "Selisih dibuat sebagai inventory movement STOCK_OPNAME."
+    },
+    "sales": {
+      "stock_rule": "Quantity sale tidak boleh melebihi current product stock.",
+      "price_rule": "Unit price harus diambil dari konfigurasi harga produk/BoM pada server dan dapat disnapshot pada sale item.",
+      "atomicity": "Sale record, sale items dan stock reduction harus atomic."
+    },
+    "ai_insights": {
+      "generation": "On demand only.",
+      "persistence": "Setiap generation membuat record insight baru.",
+      "staleness": {
+        "definition": "latest_business_activity_at > insight.data_as_of",
+        "purpose": "Memberi tahu user bahwa insight mungkin tidak merepresentasikan transaksi terbaru."
+      },
+      "calculation_rule": "Backend analytics engine menghitung angka; AI hanya menginterpretasikan hasil."
+    }
+  },
+  "api": {
+    "base_path": "/api/v1",
+    "headers": {
+      "request": [
+        "Content-Type: application/json"
+      ],
+      "response": [
+        "Content-Type: application/json"
+      ]
+    },
+    "response_schema": {
+      "success": true,
+      "data": {},
+      "meta": {}
+    },
+    "error_schema": {
+      "success": false,
+      "error": {
+        "code": "ERROR_CODE",
+        "message": "Human-readable message",
+        "fields": {}
+      }
+    },
+    "auth": {
+      "POST /auth/register": {
+        "auth_required": false,
+        "request": {
+          "email": "owner@example.com",
+          "password": "StrongPassword123!",
+          "business_name": "Toko Maju",
+          "business_description": "Usaha makanan rumahan"
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "user": {
+              "id": "usr_01",
+              "email": "owner@example.com"
+            },
+            "business": {
+              "id": "ten_01",
+              "name": "Toko Maju",
+              "description": "Usaha makanan rumahan"
+            }
+          },
+          "meta": {}
+        },
+        "errors": [
+          "EMAIL_ALREADY_EXISTS",
+          "VALIDATION_ERROR"
+        ]
+      },
+      "POST /auth/login": {
+        "auth_required": false,
+        "request": {
+          "email": "owner@example.com",
+          "password": "StrongPassword123!"
+        },
+        "response_200": {
+          "success": true,
+          "data": {
+            "user": {
+              "id": "usr_01",
+              "email": "owner@example.com"
+            },
+            "business": {
+              "id": "ten_01",
+              "name": "Toko Maju",
+              "description": "Usaha makanan rumahan"
+            }
+          },
+          "meta": {}
+        },
+        "errors": [
+          "INVALID_CREDENTIALS"
+        ]
+      },
+      "GET /auth/me": {
+        "auth_required": true,
+        "request": {},
+        "response_200": {
+          "success": true,
+          "data": {
+            "user": {
+              "id": "usr_01",
+              "email": "owner@example.com"
+            },
+            "business": {
+              "id": "ten_01",
+              "name": "Toko Maju",
+              "description": "Usaha makanan rumahan"
+            }
+          },
+          "meta": {}
+        }
+      },
+      "POST /auth/logout": {
+        "auth_required": true,
+        "request": {},
+        "response_204": {}
+      }
+    },
+    "business": {
+      "GET /business": {
+        "auth_required": true,
+        "request": {},
+        "response_200": {
+          "success": true,
+          "data": {
+            "id": "ten_01",
+            "name": "Toko Maju",
+            "description": "Usaha makanan rumahan"
+          },
+          "meta": {}
+        }
+      },
+      "PATCH /business": {
+        "auth_required": true,
+        "request": {
+          "name": "Toko Maju Baru",
+          "description": "Produksi makanan rumahan"
+        },
+        "response_200": {
+          "success": true,
+          "data": {
+            "id": "ten_01",
+            "name": "Toko Maju Baru",
+            "description": "Produksi makanan rumahan"
+          },
+          "meta": {}
+        }
+      }
+    },
+    "materials": {
+      "GET /materials": {
+        "auth_required": true,
+        "request": {
+          "query": {
+            "page": 1,
+            "limit": 20,
+            "search": "tepung"
+          }
+        },
+        "response_200": {
+          "success": true,
+          "data": [
+            {
+              "id": "mat_01",
+              "name": "Tepung",
+              "unit": "kg",
+              "quantity_precision": 2,
+              "current_stock": 12.5,
+              "minimum_stock": 5
+            }
+          ],
+          "meta": {
+            "page": 1,
+            "limit": 20,
+            "total": 1
+          }
+        }
+      },
+      "POST /materials": {
+        "auth_required": true,
+        "request": {
+          "name": "Telur",
+          "unit": "pcs",
+          "quantity_precision": 0,
+          "minimum_stock": 20
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "id": "mat_02",
+            "name": "Telur",
+            "unit": "pcs",
+            "quantity_precision": 0,
+            "current_stock": 0,
+            "minimum_stock": 20
+          },
+          "meta": {}
+        }
+      },
+      "POST /materials/:id/movements": {
+        "auth_required": true,
+        "request": {
+          "type": "IN",
+          "quantity": 10,
+          "reason": "Pembelian bahan"
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "movement_id": "mov_01",
+            "material_id": "mat_01",
+            "type": "IN",
+            "quantity": 10,
+            "stock_before": 12.5,
+            "stock_after": 22.5
+          },
+          "meta": {}
+        }
+      },
+      "GET /materials/:id/movements": {
+        "auth_required": true,
+        "request": {
+          "query": {
+            "page": 1,
+            "limit": 50
+          }
+        },
+        "response_200": {
+          "success": true,
+          "data": [
+            {
+              "id": "mov_01",
+              "movement_type": "IN",
+              "quantity": 10,
+              "stock_before": 12.5,
+              "stock_after": 22.5,
+              "reference_type": "MANUAL",
+              "reference_id": null,
+              "created_at": "2026-09-05T12:00:00Z"
+            }
+          ],
+          "meta": {
+            "page": 1,
+            "limit": 50,
+            "total": 1
+          }
+        }
+      }
+    },
+    "products": {
+      "GET /products": {
+        "auth_required": true,
+        "request": {
+          "query": {
+            "page": 1,
+            "limit": 20,
+            "search": "donat"
+          }
+        },
+        "response_200": {
+          "success": true,
+          "data": [
+            {
+              "id": "prd_01",
+              "name": "Donat Coklat",
+              "unit": "pcs",
+              "current_stock": 100,
+              "minimum_stock": 20,
+              "selling_price": 5000
+            }
+          ],
+          "meta": {
+            "page": 1,
+            "limit": 20,
+            "total": 1
+          }
+        }
+      },
+      "POST /products": {
+        "auth_required": true,
+        "request": {
+          "name": "Donat Coklat",
+          "unit": "pcs",
+          "minimum_stock": 20
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "id": "prd_01",
+            "name": "Donat Coklat",
+            "unit": "pcs",
+            "current_stock": 0,
+            "minimum_stock": 20
+          },
+          "meta": {}
+        }
+      },
+      "POST /products/:id/outgoing": {
+        "auth_required": true,
+        "request": {
+          "quantity": 5,
+          "reason_type": "DAMAGED",
+          "reason_note": "Kemasan rusak"
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "movement_id": "mov_prd_01",
+            "product_id": "prd_01",
+            "quantity": 5,
+            "reason_type": "DAMAGED",
+            "stock_before": 100,
+            "stock_after": 95
+          },
+          "meta": {}
+        }
+      }
+    },
+    "stock_opname": {
+      "POST /stock-opnames": {
+        "auth_required": true,
+        "request": {
+          "item_type": "MATERIAL",
+          "item_id": "mat_01",
+          "actual_quantity": 11.5,
+          "note": "Ditemukan selisih saat pengecekan"
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "opname_id": "opn_01",
+            "item_id": "mat_01",
+            "system_quantity": 12.5,
+            "actual_quantity": 11.5,
+            "difference": -1,
+            "stock_after": 11.5
+          },
+          "meta": {}
+        }
+      },
+      "GET /stock-opnames": {
+        "auth_required": true,
+        "request": {
+          "query": {
+            "page": 1,
+            "limit": 20
+          }
+        },
+        "response_200": {
+          "success": true,
+          "data": [
+            {
+              "id": "opn_01",
+              "item_type": "MATERIAL",
+              "item_id": "mat_01",
+              "system_quantity": 12.5,
+              "actual_quantity": 11.5,
+              "difference": -1,
+              "created_at": "2026-09-05T11:00:00Z"
+            }
+          ],
+          "meta": {
+            "page": 1,
+            "limit": 20,
+            "total": 1
+          }
+        }
+      }
+    },
+    "bom": {
+      "GET /boms": {
+        "auth_required": true,
+        "request": {
+          "query": {
+            "page": 1,
+            "limit": 20,
+            "search": "donat"
+          }
+        },
+        "response_200": {
+          "success": true,
+          "data": [
+            {
+              "id": "bom_01",
+              "name": "Resep Donat Coklat",
+              "product_id": "prd_01",
+              "output_quantity": 20,
+              "output_unit": "pcs",
+              "selling_price_per_unit": 5000
+            }
+          ],
+          "meta": {
+            "page": 1,
+            "limit": 20,
+            "total": 1
+          }
+        }
+      },
+      "POST /boms": {
+        "auth_required": true,
+        "request": {
+          "name": "Resep Donat Coklat",
+          "product_id": "prd_01",
+          "output_quantity": 20,
+          "output_unit": "pcs",
+          "selling_price_per_unit": 5000,
+          "materials": [
+            {
+              "material_id": "mat_flour",
+              "quantity": 1
+            },
+            {
+              "material_id": "mat_sugar",
+              "quantity": 0.3
+            },
+            {
+              "material_id": "mat_egg",
+              "quantity": 10
+            }
+          ]
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "id": "bom_01",
+            "name": "Resep Donat Coklat",
+            "product_id": "prd_01",
+            "output_quantity": 20,
+            "output_unit": "pcs",
+            "selling_price_per_unit": 5000,
+            "materials": [
+              {
+                "material_id": "mat_flour",
+                "quantity": 1
+              },
+              {
+                "material_id": "mat_sugar",
+                "quantity": 0.3
+              },
+              {
+                "material_id": "mat_egg",
+                "quantity": 10
+              }
+            ]
+          },
+          "meta": {}
+        }
+      },
+      "GET /boms/:id": {
+        "auth_required": true,
+        "request": {},
+        "response_200": {
+          "success": true,
+          "data": {
+            "id": "bom_01",
+            "name": "Resep Donat Coklat",
+            "product_id": "prd_01",
+            "output_quantity": 20,
+            "output_unit": "pcs",
+            "selling_price_per_unit": 5000,
+            "materials": [
+              {
+                "material_id": "mat_flour",
+                "quantity": 1,
+                "unit": "kg"
+              },
+              {
+                "material_id": "mat_egg",
+                "quantity": 10,
+                "unit": "pcs"
+              }
+            ]
+          },
+          "meta": {}
+        }
+      },
+      "PATCH /boms/:id": {
+        "auth_required": true,
+        "request": {
+          "name": "Resep Donat Coklat Revised",
+          "output_quantity": 20,
+          "selling_price_per_unit": 5500,
+          "materials": [
+            {
+              "material_id": "mat_flour",
+              "quantity": 1
+            },
+            {
+              "material_id": "mat_sugar",
+              "quantity": 0.3
+            },
+            {
+              "material_id": "mat_egg",
+              "quantity": 10
+            }
+          ]
+        },
+        "response_200": {
+          "success": true,
+          "data": {
+            "id": "bom_01",
+            "name": "Resep Donat Coklat Revised",
+            "output_quantity": 20,
+            "output_unit": "pcs",
+            "selling_price_per_unit": 5500
+          },
+          "meta": {}
+        }
+      }
+    },
+    "production": {
+      "POST /productions/preview": {
+        "auth_required": true,
+        "request": {
+          "product_id": "prd_01",
+          "target_output_quantity": 7
+        },
+        "response_200": {
+          "success": true,
+          "data": {
+            "product_id": "prd_01",
+            "bom_id": "bom_01",
+            "target_output_quantity": 7,
+            "bom_output_quantity": 20,
+            "bom_multiplier": 0.35,
+            "materials": [
+              {
+                "material_id": "mat_flour",
+                "calculated_quantity": 0.35,
+                "unit": "kg",
+                "available_quantity": 5
+              },
+              {
+                "material_id": "mat_sugar",
+                "calculated_quantity": 0.105,
+                "unit": "kg",
+                "available_quantity": 2
+              },
+              {
+                "material_id": "mat_egg",
+                "calculated_quantity": 3.5,
+                "unit": "pcs",
+                "available_quantity": 10
+              }
+            ],
+            "stock_check": {
+              "can_produce": true,
+              "errors": []
+            }
+          },
+          "meta": {}
+        }
+      },
+      "POST /productions": {
+        "auth_required": true,
+        "request": {
+          "product_id": "prd_01",
+          "bom_id": "bom_01",
+          "target_output_quantity": 7,
+          "actual_output_quantity": 7,
+          "materials": [
+            {
+              "material_id": "mat_flour",
+              "calculated_quantity": 0.35,
+              "actual_quantity": 0.35
+            },
+            {
+              "material_id": "mat_sugar",
+              "calculated_quantity": 0.105,
+              "actual_quantity": 0.105
+            },
+            {
+              "material_id": "mat_egg",
+              "calculated_quantity": 3.5,
+              "actual_quantity": 4
+            }
+          ],
+          "note": "Telur dibulatkan"
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "id": "prod_01",
+            "product_id": "prd_01",
+            "bom_id": "bom_01",
+            "target_output_quantity": 7,
+            "actual_output_quantity": 7,
+            "bom_multiplier": 0.35,
+            "materials": [
+              {
+                "material_id": "mat_flour",
+                "calculated_quantity": 0.35,
+                "actual_quantity": 0.35
+              },
+              {
+                "material_id": "mat_sugar",
+                "calculated_quantity": 0.105,
+                "actual_quantity": 0.105
+              },
+              {
+                "material_id": "mat_egg",
+                "calculated_quantity": 3.5,
+                "actual_quantity": 4
+              }
+            ],
+            "created_at": "2026-09-05T12:00:00Z"
+          },
+          "meta": {}
+        },
+        "errors": [
+          "INSUFFICIENT_MATERIAL_STOCK",
+          "INVALID_QUANTITY_PRECISION",
+          "PRODUCT_NOT_FOUND",
+          "BOM_NOT_FOUND",
+          "BOM_PRODUCT_MISMATCH"
+        ]
+      },
+      "GET /productions": {
+        "auth_required": true,
+        "request": {
+          "query": {
+            "page": 1,
+            "limit": 20,
+            "product_id": "prd_01"
+          }
+        },
+        "response_200": {
+          "success": true,
+          "data": [
+            {
+              "id": "prod_01",
+              "product_id": "prd_01",
+              "target_output_quantity": 7,
+              "actual_output_quantity": 7,
+              "bom_multiplier": 0.35,
+              "created_at": "2026-09-05T12:00:00Z"
+            }
+          ],
+          "meta": {
+            "page": 1,
+            "limit": 20,
+            "total": 1
+          }
+        }
+      },
+      "GET /productions/:id": {
+        "auth_required": true,
+        "request": {},
+        "response_200": {
+          "success": true,
+          "data": {
+            "id": "prod_01",
+            "product_id": "prd_01",
+            "bom_id": "bom_01",
+            "target_output_quantity": 7,
+            "actual_output_quantity": 7,
+            "bom_multiplier": 0.35,
+            "materials": [
+              {
+                "material_id": "mat_egg",
+                "calculated_quantity": 3.5,
+                "actual_quantity": 4
+              }
+            ],
+            "created_at": "2026-09-05T12:00:00Z"
+          },
+          "meta": {}
+        }
+      }
+    },
+    "sales": {
+      "POST /sales": {
+        "auth_required": true,
+        "request": {
+          "items": [
+            {
+              "product_id": "prd_01",
+              "quantity": 3
+            }
+          ]
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "id": "sale_01",
+            "items": [
+              {
+                "product_id": "prd_01",
+                "quantity": 3,
+                "unit_price": 5000,
+                "subtotal": 15000
+              }
+            ],
+            "total": 15000,
+            "created_at": "2026-09-05T12:30:00Z"
+          },
+          "meta": {}
+        },
+        "errors": [
+          "INSUFFICIENT_PRODUCT_STOCK",
+          "PRODUCT_NOT_FOUND"
+        ]
+      },
+      "GET /sales": {
+        "auth_required": true,
+        "request": {
+          "query": {
+            "page": 1,
+            "limit": 20,
+            "from": "2026-09-01",
+            "to": "2026-09-05"
+          }
+        },
+        "response_200": {
+          "success": true,
+          "data": [
+            {
+              "id": "sale_01",
+              "items": [
+                {
+                  "product_id": "prd_01",
+                  "quantity": 3,
+                  "unit_price": 5000,
+                  "subtotal": 15000
+                }
+              ],
+              "total": 15000,
+              "created_at": "2026-09-05T12:30:00Z"
+            }
+          ],
+          "meta": {
+            "page": 1,
+            "limit": 20,
+            "total": 1
+          }
+        }
+      }
+    },
+    "dashboard": {
+      "GET /dashboard/summary": {
+        "auth_required": true,
+        "request": {
+          "query": {
+            "from": "2026-09-01",
+            "to": "2026-09-05"
+          }
+        },
+        "response_200": {
+          "success": true,
+          "data": {
+            "sales": {
+              "total": 1250000,
+              "transaction_count": 28
+            },
+            "production": {
+              "production_count": 12,
+              "output_quantity": 430
+            },
+            "low_stock": {
+              "materials": 3,
+              "products": 1
+            },
+            "latest_activity_at": "2026-09-05T12:30:00Z"
+          },
+          "meta": {}
+        }
+      }
+    },
+    "insights": {
+      "POST /insights/generate": {
+        "auth_required": true,
+        "request": {
+          "period_from": "2026-09-01",
+          "period_to": "2026-09-05"
+        },
+        "response_201": {
+          "success": true,
+          "data": {
+            "id": "ins_01",
+            "generated_at": "2026-09-05T12:35:00Z",
+            "data_as_of": "2026-09-05T12:30:00Z",
+            "content": [
+              {
+                "type": "WARNING",
+                "title": "Stok tepung mulai menipis",
+                "body": "Stok tepung saat ini hanya cukup untuk beberapa produksi berikutnya berdasarkan pola produksi terbaru."
+              }
+            ]
+          },
+          "meta": {}
+        }
+      },
+      "GET /insights": {
+        "auth_required": true,
+        "request": {
+          "query": {
+            "limit": 10
+          }
+        },
+        "response_200": {
+          "success": true,
+          "data": [
+            {
+              "id": "ins_01",
+              "generated_at": "2026-09-05T12:35:00Z",
+              "data_as_of": "2026-09-05T12:30:00Z",
+              "is_stale": true,
+              "content": [
+                {
+                  "type": "WARNING",
+                  "title": "Stok tepung mulai menipis",
+                  "body": "Stok tepung saat ini hanya cukup untuk beberapa produksi berikutnya."
+                }
+              ]
+            }
+          ],
+          "meta": {
+            "latest_business_activity_at": "2026-09-05T12:40:00Z"
+          }
+        }
+      }
+    }
+  },
+  "api_error_codes": {
+    "AUTH_REQUIRED": 401,
+    "INVALID_CREDENTIALS": 401,
+    "FORBIDDEN": 403,
+    "RESOURCE_NOT_FOUND": 404,
+    "VALIDATION_ERROR": 422,
+    "EMAIL_ALREADY_EXISTS": 409,
+    "INSUFFICIENT_MATERIAL_STOCK": 409,
+    "INSUFFICIENT_PRODUCT_STOCK": 409,
+    "INVALID_QUANTITY_PRECISION": 422,
+    "BOM_PRODUCT_MISMATCH": 422,
+    "BUSINESS_RULE_VIOLATION": 409,
+    "INTERNAL_ERROR": 500
+  },
+  "transaction_patterns": {
+    "production_commit": [
+      "Begin transaction",
+      "Load and lock/revalidate selected BoM",
+      "Load all material current_stock",
+      "Validate actual_quantity precision",
+      "Validate actual_quantity <= current_stock",
+      "Insert production",
+      "Insert production_materials",
+      "Insert material PRODUCTION_CONSUMPTION movements",
+      "Update material current_stock",
+      "Insert product PRODUCTION_OUTPUT movement",
+      "Update product current_stock",
+      "Commit transaction"
+    ],
+    "sale_commit": [
+      "Begin transaction",
+      "Validate every product and stock quantity",
+      "Snapshot unit_price",
+      "Insert sale",
+      "Insert sale_items",
+      "Insert product SALE movements",
+      "Update product current_stock",
+      "Commit transaction"
+    ],
+    "stock_opname_commit": [
+      "Begin transaction",
+      "Read current system quantity",
+      "Calculate difference",
+      "Insert stock_opname",
+      "Insert STOCK_OPNAME movement",
+      "Update current_stock",
+      "Commit transaction"
+    ]
+  },
+  "analytics_layer": {
+    "purpose": "Menghasilkan angka terstruktur untuk dashboard dan AI.",
+    "metrics": [
+      "Total sales",
+      "Sales transaction count",
+      "Sales growth",
+      "Production count",
+      "Production output",
+      "Top products",
+      "Low stock materials",
+      "Low stock products",
+      "Product outgoing by reason",
+      "Production actual vs calculated material usage"
+    ],
+    "principle": "Backend menghitung angka secara deterministic; AI tidak diberi kewenangan untuk menghitung ulang angka bisnis."
+  },
+  "ai": {
+    "architecture": {
+      "database": "Tenant DO SQLite",
+      "aggregation": "Analytics engine",
+      "context_builder": "Membentuk business context ringkas",
+      "model": "LLM provider melalui server-side secret",
+      "storage": "ai_insights table"
+    },
+    "context_example": {
+      "business": {
+        "name": "Toko Maju",
+        "type": "Bakery"
+      },
+      "period": {
+        "from": "2026-09-01",
+        "to": "2026-09-05"
+      },
+      "metrics": {
+        "sales_total": 2500000,
+        "sales_growth_percent": 18.4,
+        "production_output": 280
+      },
+      "alerts": [
+        {
+          "material": "Tepung",
+          "current_stock": 3,
+          "minimum_stock": 5
+        }
+      ],
+      "production_variance": [
+        {
+          "product": "Donat Coklat",
+          "material": "Telur",
+          "calculated_average": 3.5,
+          "actual_average": 4
+        }
+      ]
+    },
+    "system_prompt_rules": [
+      "Gunakan hanya fakta dalam business context.",
+      "Jangan mengarang angka.",
+      "Jangan mengubah angka sumber.",
+      "Prioritaskan insight yang actionable.",
+      "Gunakan bahasa Indonesia yang sederhana.",
+      "Maksimal 3 insight utama.",
+      "Jika data tidak cukup, nyatakan keterbatasannya.",
+      "Jangan memberi nasihat akuntansi atau hukum yang membutuhkan data tambahan."
+    ],
+    "persistence": {
+      "generated_at": "Timestamp server.",
+      "data_as_of": "Timestamp aktivitas bisnis terakhir yang masuk ke aggregate saat generation.",
+      "prompt_version": "Versioned identifier.",
+      "model_metadata": "Simpan minimal provider/model dan bukan credential."
+    }
+  },
+  "observability": {
+    "logging": [
+      "request_id",
+      "tenant_id",
+      "user_id",
+      "route",
+      "status",
+      "duration_ms"
+    ],
+    "audit": [
+      "Production",
+      "Sale",
+      "Stock opname",
+      "Manual stock movement",
+      "Product outgoing"
+    ],
+    "privacy": "Jangan mencatat password, session token, atau secret pada logs."
+  },
+  "deployment": {
+    "configuration": {
+      "wrangler": "Gunakan wrangler.jsonc untuk Worker entrypoint, Durable Object bindings, migrations dan environment configuration.",
+      "vite": "Gunakan @cloudflare/vite-plugin.",
+      "types": "Generate Cloudflare bindings types dari konfigurasi Worker."
+    },
+    "environments": [
+      "development",
+      "staging",
+      "production"
+    ],
+    "secrets": [
+      "AI provider API key",
+      "Optional application secrets"
+    ],
+    "source": "Cloudflare Vite plugin saat ini menyediakan integrasi Vite dengan Workers runtime dan bindings; Hono juga menyediakan pola full-stack Workers + Vite. :contentReference[oaicite:1]{index=1}"
+  },
+  "testing": {
+    "unit": [
+      "BoM multiplier calculation",
+      "Material calculation",
+      "Precision validation",
+      "Stock validation",
+      "Stock difference calculation",
+      "AI context generation"
+    ],
+    "integration": [
+      "Auth registration and login",
+      "Tenant isolation",
+      "Material movement",
+      "Production atomic transaction",
+      "POS atomic transaction",
+      "Stock opname",
+      "Insight generation and persistence"
+    ],
+    "cloudflare": {
+      "framework": "Gunakan @cloudflare/vitest-pool-workers untuk testing yang berjalan dekat dengan runtime Workers.",
+      "source": "https://developers.cloudflare.com/workers/testing/vitest-integration/"
+    }
+  },
+  "implementation_order": [
+    "Project bootstrap Hono + Vite + Workers",
+    "Durable Object AuthDirectory + session",
+    "Durable Object Tenant + SQLite schema",
+    "Authentication API",
+    "Business profile API",
+    "Material API + inventory ledger",
+    "Product API + inventory ledger",
+    "Stock opname API",
+    "BoM API",
+    "Production preview API",
+    "Production commit transaction",
+    "POS API",
+    "Dashboard analytics",
+    "AI context builder",
+    "AI insight generation and persistence",
+    "Frontend integration tests",
+    "E2E testing",
+    "Production deployment"
+  ]
+}
