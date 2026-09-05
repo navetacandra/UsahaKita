@@ -1,8 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "usahakita",
-  "compatibility_date": "2025-08-03",
   "main": "./src/index.tsx",
+  "compatibility_date": "2025-08-03",
+  "compatibility_flags": ["nodejs_compat"],
+
   "durable_objects": {
     "bindings": [
       {
@@ -15,10 +17,15 @@
       }
     ]
   },
+
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["AuthDirectoryDO", "TenantDO"]
+      "new_sqlite_classes": ["AuthDirectoryDO", "TenantDO"]
     }
-  ]
+  ],
+
+  "observability": {
+    "enabled": true
+  }
 }
