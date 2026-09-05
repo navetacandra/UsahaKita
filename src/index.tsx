@@ -11,6 +11,7 @@ import sales from './routes/sales';
 import stockOpname from './routes/stock-opname';
 import dashboard from './routes/dashboard';
 import insights from './routes/insights';
+import docs from './routes/docs';
 
 type Bindings = {
   AUTH_DO: DurableObjectNamespace;
@@ -42,6 +43,7 @@ api.route('/dashboard', dashboard);
 api.route('/insights', insights);
 
 app.route('/api/v1', api);
+app.route('/docs', docs);
 
 export default app;
 
