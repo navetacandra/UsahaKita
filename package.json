@@ -8,6 +8,8 @@
     "deploy": "$npm_execpath run build && wrangler deploy",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
@@ -23,6 +25,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.44.0",
+    "@playwright/test": "^1.62.1",
     "@types/node": "^26.4.1",
     "tailwindcss": "^4.3.3",
     "vite": "^8.1.4",

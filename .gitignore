@@ -35,3 +35,7 @@ lerna-debug.log*
 
 # generated
 worker-configuration.d.ts
+
+# playwright
+test-results/
+playwright-report/
