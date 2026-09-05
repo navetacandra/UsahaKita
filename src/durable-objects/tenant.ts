@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { idGenerator } from '../lib/id';
+import { getTenantSeedSQL } from '../lib/seed';
 
 export class TenantDO extends DurableObject {
   private sql!: SqlStorage;
@@ -732,5 +733,19 @@ export class TenantDO extends DurableObject {
       JOIN materials m ON pm.material_id = m.id
       GROUP BY pm.material_id
     `).toArray();
+  }
+
+  async seed(): Promise<{ seeded: boolean; message: string }> {
+    const existing = this.sql.exec('SELECT COUNT(*) as count FROM materials').one();
+    if ((existing.count as number) > 0) {
+      return { seeded: false, message: 'Tenant database already seeded' };
+    }
+
+    const statements = getTenantSeedSQL();
+    for (const sql of statements) {
+      this.sql.exec(sql);
+    }
+
+    return { seeded: true, message: 'Tenant seed data inserted' };
   }
 }

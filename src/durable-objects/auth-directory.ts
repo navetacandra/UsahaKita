@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { cryptoUtils } from '../lib/crypto';
 import { idGenerator } from '../lib/id';
+import { getAuthSeedSQL } from '../lib/seed';
 
 export class AuthDirectoryDO extends DurableObject {
   private sql!: SqlStorage;
@@ -184,5 +185,19 @@ export class AuthDirectoryDO extends DurableObject {
     if (description !== undefined) {
       this.sql.exec('UPDATE tenants SET description = ?, updated_at = ? WHERE id = ?', description, now, tenantId);
     }
+  }
+
+  async seed(): Promise<{ seeded: boolean; message: string }> {
+    const existing = this.sql.exec('SELECT COUNT(*) as count FROM users').one();
+    if ((existing.count as number) > 0) {
+      return { seeded: false, message: 'Database already seeded' };
+    }
+
+    const statements = getAuthSeedSQL();
+    for (const sql of statements) {
+      this.sql.exec(sql);
+    }
+
+    return { seeded: true, message: 'Auth seed data inserted' };
   }
 }

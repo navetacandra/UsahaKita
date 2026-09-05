@@ -89,4 +89,20 @@ auth.post('/logout', authMiddleware, async (c) => {
   });
 });
 
+auth.post('/seed', async (c) => {
+  const authDoId = c.env.AUTH_DO.idFromName('global');
+  const authDo = c.env.AUTH_DO.get(authDoId);
+
+  const authResult = await authDo.seed();
+
+  const tenantDoId = c.env.TENANT_DO.idFromName('ten_01');
+  const tenantDo = c.env.TENANT_DO.get(tenantDoId);
+  const tenantResult = await tenantDo.seed();
+
+  return c.json(successResponse({
+    auth: authResult,
+    tenant: tenantResult,
+  }));
+});
+
 export default auth;
