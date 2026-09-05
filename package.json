@@ -10,14 +10,20 @@
   },
   "dependencies": {
     "@hono/swagger-ui": "^0.6.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^6.1.1",
     "hono": "^4.13.7",
+    "lucide-react": "^1.41.0",
+    "motion": "^13.2.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.44.0",
     "@types/node": "^26.4.1",
+    "tailwindcss": "^4.3.3",
     "vite": "^8.1.4",
-    "vite-ssr-components": "^0.6.1",
     "wrangler": "^4.110.0"
   }
 }

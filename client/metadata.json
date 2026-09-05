@@ -1,0 +1,8 @@
+{
+  "name": "UsahaKita",
+  "description": "Aplikasi Micro ERP multi-tenant untuk UMKM grassroots dengan manajemen stok material, resep & komposisi (BoM), produksi terukur, POS kasir, dan AI business insight.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
