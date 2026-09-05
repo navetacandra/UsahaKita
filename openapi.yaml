@@ -1,0 +1,1902 @@
+openapi: 3.0.3
+info:
+  title: UsahaKita API
+  description: |
+    Multi-tenant micro ERP API untuk operasi material, resep, produksi, produk jadi, penjualan, dan AI insight.
+
+    ## Authentication
+    Semua endpoint yang memerlukan autentikasi menggunakan cookie `session_token` (HttpOnly, Secure, SameSite=Strict).
+
+    ## Tenant Isolation
+    `tenant_id` selalu berasal dari session yang terotentikasi, bukan dari body request.
+
+    ## Response Envelope
+    Semua response menggunakan format:
+    - Success: `{ "success": true, "data": ..., "meta": ... }`
+    - Error: `{ "success": false, "error": { "code": "...", "message": "...", "fields": {} } }`
+  version: 1.0.0
+  contact:
+    name: UsahaKita
+  license:
+    name: MIT
+
+servers:
+  - url: /api/v1
+    description: API v1
+
+tags:
+  - name: Auth
+    description: Autentikasi dan manajemen sesi
+  - name: Business
+    description: Profil usaha/tenant
+  - name: Materials
+    description: Manajemen material dan stok bahan
+  - name: Products
+    description: Manajemen produk jadi
+  - name: BOMs
+    description: Resep dan komposisi (Bill of Materials)
+  - name: Productions
+    description: Manajemen produksi
+  - name: Sales
+    description: Penjualan dan POS
+  - name: Stock Opname
+    description: Pencocokan stok fisik
+  - name: Dashboard
+    description: Ringkasan dashboard
+  - name: Insights
+    description: AI insight bisnis
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Registrasi akun dan usaha baru
+      description: Membuat user baru, tenant baru, dan mengatur role OWNER. Mengembalikan session cookie.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              email: owner@tokomaju.com
+              password: StrongPassword123!
+              business_name: Toko Maju
+              business_description: Usaha makanan rumahan
+      responses:
+        '201':
+          description: Registrasi berhasil
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              example: 'session_token=abc123; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '409':
+          $ref: '#/components/responses/EmailAlreadyExists'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Masuk ke akun
+      description: Autentikasi user dengan email dan password. Mengembalikan session cookie.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: owner@tokomaju.com
+              password: StrongPassword123!
+      responses:
+        '200':
+          description: Login berhasil
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Ambil data user dan bisnis saat ini
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Keluar dari sesi
+      description: Mencabut session di server dan menghapus cookie.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Logout berhasil
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              example: 'session_token=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NullSuccessResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+
+  /auth/seed:
+    post:
+      tags: [Auth]
+      summary: Seed data contoh (development only)
+      description: Mengisi database dengan data contoh sesuai client-api.ts. Idempotent - tidak mengisi jika data sudah ada.
+      security: []
+      responses:
+        '200':
+          description: Seed berhasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      auth:
+                        type: object
+                        properties:
+                          seeded:
+                            type: boolean
+                          message:
+                            type: string
+                      tenant:
+                        type: object
+                        properties:
+                          seeded:
+                            type: boolean
+                          message:
+                            type: string
+
+  /business:
+    get:
+      tags: [Business]
+      summary: Ambil profil usaha
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Business]
+      summary: Ubah profil usaha
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessUpdateRequest'
+            example:
+              name: Toko Maju Baru
+              description: Produksi makanan rumahan
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+
+  /materials:
+    get:
+      tags: [Materials]
+      summary: Daftar material
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Filter berdasarkan nama material
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialListResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+    post:
+      tags: [Materials]
+      summary: Tambah material baru
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialCreateRequest'
+            example:
+              name: Telur Ayam
+              unit: pcs
+              quantity_precision: 0
+              minimum_stock: 20
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /materials/{id}/movements:
+    post:
+      tags: [Materials]
+      summary: Catat pergerakan stok material
+      description: |
+        Mencatat stok masuk (IN) atau keluar (OUT) untuk material.
+
+        **Aturan bisnis:**
+        - `quantity` harus > 0
+        - Untuk OUT, `quantity` tidak boleh melebihi `current_stock`
+        - `current_stock` diperbarui secara atomic
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MaterialId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialMovementRequest'
+            example:
+              type: IN
+              quantity: 10
+              reason_type: PURCHASE
+              reason_note: Pembelian bahan baku mingguan
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MovementSuccessResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Stok tidak mencukupi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [Materials]
+      summary: Riwayat pergerakan stok material
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MaterialId'
+        - $ref: '#/components/parameters/Page'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MovementListResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+
+  /products:
+    get:
+      tags: [Products]
+      summary: Daftar produk
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+    post:
+      tags: [Products]
+      summary: Tambah produk baru
+      description: Produk baru memiliki `current_stock = 0`. Stok bertambah melalui produksi.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateRequest'
+            example:
+              name: Donat Coklat
+              unit: pcs
+              minimum_stock: 20
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /products/{id}/outgoing:
+    post:
+      tags: [Products]
+      summary: Catat produk keluar non-penjualan
+      description: |
+        Mencatat pengeluaran produk untuk alasan selain penjualan (rusak, kadaluarsa, sampel, dll).
+
+        **Aturan bisnis:**
+        - `quantity` harus > 0
+        - `quantity` tidak boleh melebihi `current_stock`
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductOutgoingRequest'
+            example:
+              quantity: 5
+              reason_type: DAMAGED
+              reason_note: Kemasan rusak
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductOutgoingSuccessResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Stok tidak mencukupi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /products/{id}/movements:
+    get:
+      tags: [Products]
+      summary: Riwayat pergerakan stok produk
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+        - $ref: '#/components/parameters/Page'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MovementListResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+
+  /boms:
+    get:
+      tags: [BOMs]
+      summary: Daftar resep (BoM)
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BomListResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+    post:
+      tags: [BOMs]
+      summary: Buat resep baru
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BomCreateRequest'
+            example:
+              name: Resep Donat Coklat
+              product_id: prd_01
+              output_quantity: 20
+              output_unit: pcs
+              selling_price_per_unit: 5000
+              materials:
+                - material_id: mat_01
+                  quantity: 1
+                - material_id: mat_03
+                  quantity: 0.3
+                - material_id: mat_02
+                  quantity: 10
+                - material_id: mat_05
+                  quantity: 0.4
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BomResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /boms/{id}:
+    get:
+      tags: [BOMs]
+      summary: Ambil detail resep
+      description: Mengembalikan resep beserta daftar material dan unit-nya.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BomId'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BomDetailResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [BOMs]
+      summary: Ubah resep
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BomId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BomUpdateRequest'
+            example:
+              name: Resep Donat Coklat Revised
+              output_quantity: 20
+              selling_price_per_unit: 5500
+              materials:
+                - material_id: mat_01
+                  quantity: 1
+                - material_id: mat_03
+                  quantity: 0.3
+                - material_id: mat_02
+                  quantity: 10
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BomResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /productions/preview:
+    post:
+      tags: [Productions]
+      summary: Preview kebutuhan material produksi
+      description: |
+        Menghitung kebutuhan material berdasarkan target output dan resep.
+
+        **Formula:**
+        - `bom_multiplier = target_output_quantity / bom.output_quantity`
+        - `calculated_quantity = bom_material.quantity × bom_multiplier`
+
+        Response menyertakan `stock_check.can_produce` untuk mengecek ketersediaan stok.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductionPreviewRequest'
+            example:
+              product_id: prd_01
+              target_output_quantity: 7
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductionPreviewResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /productions:
+    post:
+      tags: [Productions]
+      summary: Commit produksi
+      description: |
+        Melakukan produksi secara atomic:
+
+        1. Validasi semua material memiliki stok cukup
+        2. Insert production record
+        3. Insert production_materials
+        4. Insert material PRODUCTION_CONSUMPTION movements
+        5. Update material current_stock
+        6. Insert product PRODUCTION_OUTPUT movement
+        7. Update product current_stock
+
+        **Aturan bisnis:**
+        - `actual_quantity` material menjadi dasar pengurangan stok
+        - `actual_output_quantity` menjadi dasar penambahan stok produk
+        - Jika `actual_quantity` melebihi `current_stock`, transaksi gagal
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductionCommitRequest'
+            example:
+              product_id: prd_01
+              bom_id: bom_01
+              target_output_quantity: 7
+              actual_output_quantity: 7
+              materials:
+                - material_id: mat_01
+                  calculated_quantity: 0.35
+                  actual_quantity: 0.35
+                - material_id: mat_03
+                  calculated_quantity: 0.105
+                  actual_quantity: 0.105
+                - material_id: mat_02
+                  calculated_quantity: 3.5
+                  actual_quantity: 4
+              note: Telur dibulatkan
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductionResponse'
+        '409':
+          description: Stok material tidak mencukupi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [Productions]
+      summary: Daftar riwayat produksi
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: product_id
+          in: query
+          schema:
+            type: string
+          description: Filter berdasarkan produk
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductionListResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+
+  /productions/{id}:
+    get:
+      tags: [Productions]
+      summary: Ambil detail produksi
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductionId'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductionDetailResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /sales:
+    post:
+      tags: [Sales]
+      summary: Catat penjualan
+      description: |
+        Membuat transaksi penjualan secara atomic:
+
+        1. Validasi setiap produk dan ketersediaan stok
+        2. Snapshot `unit_price` dari BoM
+        3. Insert sale record
+        4. Insert sale_items
+        5. Insert product SALE movements
+        6. Update product current_stock
+
+        **Aturan bisnis:**
+        - `unit_price` diambil dari konfigurasi harga produk/BoM pada server
+        - `quantity` tidak boleh melebihi `current_stock`
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaleCreateRequest'
+            example:
+              items:
+                - product_id: prd_01
+                  quantity: 3
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleResponse'
+        '409':
+          description: Stok produk tidak mencukupi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [Sales]
+      summary: Daftar riwayat penjualan
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter tanggal awal (YYYY-MM-DD)
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Filter tanggal akhir (YYYY-MM-DD)
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleListResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+
+  /stock-opnames:
+    post:
+      tags: [Stock Opname]
+      summary: Catat stok opname
+      description: |
+        Mencocokkan stok sistem dengan stok fisik.
+
+        **Aturan bisnis:**
+        - `difference = actual_quantity - system_quantity`
+        - `current_stock` diatur ke `actual_quantity`
+        - Selisih dicatat sebagai inventory movement `STOCK_OPNAME`
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockOpnameRequest'
+            example:
+              item_type: MATERIAL
+              item_id: mat_01
+              actual_quantity: 11.5
+              note: Ditemukan selisih saat pengecekan
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockOpnameResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [Stock Opname]
+      summary: Daftar riwayat stok opname
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockOpnameListResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+
+  /dashboard/summary:
+    get:
+      tags: [Dashboard]
+      summary: Ringkasan dashboard
+      description: Mengembalikan ringkasan penjualan, produksi, stok rendah, dan aktivitas terbaru.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummaryResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+
+  /insights:
+    get:
+      tags: [Insights]
+      summary: Daftar insight tersimpan
+      description: |
+        Mengembalikan daftar insight yang sudah di-generate.
+
+        **Staleness:** `is_stale = true` jika `latest_business_activity_at > insight.data_as_of`
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InsightListResponse'
+        '401':
+          $ref: '#/components/responses/AuthRequired'
+
+  /insights/generate:
+    post:
+      tags: [Insights]
+      summary: Generate insight baru
+      description: |
+        Mengumpulkan metrik bisnis dan menghasilkan insight:
+
+        1. Mengambil metrik penjualan, produk terlaris, variance produksi, dan summary dashboard
+        2. Jika `AI_API_KEY` dikonfigurasi, menggunakan OpenAI `gpt-4o-mini`
+        3. Jika tidak, menggunakan rule-based insight generation
+        4. Menyimpan hasil sebagai record `ai_insight` baru
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InsightGenerateRequest'
+            example:
+              period_from: '2026-09-01'
+              period_to: '2026-09-05'
+      responses:
+        '201':
+          description: Berhasil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InsightGenerateResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: header
+      name: Cookie
+      description: |
+        Cookie `session_token` yang di-set saat login/register.
+        Format: `Cookie: session_token=<token>`
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+    MaterialId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Material ID (e.g., mat_01)
+    ProductId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Product ID (e.g., prd_01)
+    BomId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: BOM ID (e.g., bom_01)
+    ProductionId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Production ID (e.g., prod_01)
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password, business_name]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        business_name:
+          type: string
+        business_description:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthSuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            business:
+              $ref: '#/components/schemas/Business'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: usr_01
+        email:
+          type: string
+          format: email
+          example: owner@tokomaju.com
+
+    Business:
+      type: object
+      properties:
+        id:
+          type: string
+          example: ten_01
+        name:
+          type: string
+          example: Toko Maju
+        description:
+          type: string
+          example: Usaha produksi dan penjualan makanan rumahan
+
+    BusinessUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    BusinessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Business'
+
+    Material:
+      type: object
+      properties:
+        id:
+          type: string
+          example: mat_01
+        name:
+          type: string
+          example: Tepung Terigu
+        unit:
+          type: string
+          example: kg
+        quantity_precision:
+          type: integer
+          example: 2
+        current_stock:
+          type: number
+          format: double
+          example: 12.5
+        minimum_stock:
+          type: number
+          format: double
+          example: 5
+
+    MaterialCreateRequest:
+      type: object
+      required: [name, unit]
+      properties:
+        name:
+          type: string
+        unit:
+          type: string
+        quantity_precision:
+          type: integer
+          default: 0
+        minimum_stock:
+          type: number
+          default: 0
+
+    MaterialResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Material'
+
+    MaterialListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Material'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    MaterialMovementRequest:
+      type: object
+      required: [type, quantity]
+      properties:
+        type:
+          type: string
+          enum: [IN, OUT]
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+        reason_type:
+          type: string
+          enum: [PURCHASE, DAMAGED, EXPIRED, SAMPLE, INTERNAL_USE, LOST, OTHER]
+        reason_note:
+          type: string
+
+    MovementSuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            movement_id:
+              type: string
+            material_id:
+              type: string
+            type:
+              type: string
+            quantity:
+              type: number
+            stock_before:
+              type: number
+            stock_after:
+              type: number
+
+    Movement:
+      type: object
+      properties:
+        id:
+          type: string
+        item_type:
+          type: string
+          enum: [MATERIAL, PRODUCT]
+        item_id:
+          type: string
+        movement_type:
+          type: string
+          enum: [IN, OUT, PRODUCTION_CONSUMPTION, PRODUCTION_OUTPUT, SALE, STOCK_OPNAME]
+        quantity:
+          type: number
+        stock_before:
+          type: number
+        stock_after:
+          type: number
+        reason_type:
+          type: string
+          nullable: true
+        reason_note:
+          type: string
+          nullable: true
+        reference_type:
+          type: string
+          nullable: true
+        reference_id:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    MovementListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Movement'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          example: prd_01
+        name:
+          type: string
+          example: Donat Coklat
+        unit:
+          type: string
+          example: pcs
+        current_stock:
+          type: number
+          example: 35
+        minimum_stock:
+          type: number
+          example: 20
+
+    ProductCreateRequest:
+      type: object
+      required: [name, unit]
+      properties:
+        name:
+          type: string
+        unit:
+          type: string
+        minimum_stock:
+          type: number
+          default: 0
+
+    ProductResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Product'
+
+    ProductListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    ProductOutgoingRequest:
+      type: object
+      required: [quantity, reason_type]
+      properties:
+        quantity:
+          type: number
+          exclusiveMinimum: 0
+        reason_type:
+          type: string
+          enum: [DAMAGED, EXPIRED, SAMPLE, INTERNAL_USE, LOST, OTHER]
+        reason_note:
+          type: string
+
+    ProductOutgoingSuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            movement_id:
+              type: string
+            product_id:
+              type: string
+            quantity:
+              type: number
+            reason_type:
+              type: string
+            stock_before:
+              type: number
+            stock_after:
+              type: number
+
+    Bom:
+      type: object
+      properties:
+        id:
+          type: string
+          example: bom_01
+        name:
+          type: string
+          example: Resep Donat Coklat
+        product_id:
+          type: string
+          example: prd_01
+        output_quantity:
+          type: number
+          example: 20
+        output_unit:
+          type: string
+          example: pcs
+        selling_price_per_unit:
+          type: number
+          example: 5000
+
+    BomMaterial:
+      type: object
+      properties:
+        material_id:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+          description: Hanya tersedia pada GET by ID
+
+    BomCreateRequest:
+      type: object
+      required: [name, product_id, output_quantity, output_unit, materials]
+      properties:
+        name:
+          type: string
+        product_id:
+          type: string
+        output_quantity:
+          type: number
+          exclusiveMinimum: 0
+        output_unit:
+          type: string
+        selling_price_per_unit:
+          type: number
+          default: 0
+        materials:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [material_id, quantity]
+            properties:
+              material_id:
+                type: string
+              quantity:
+                type: number
+                exclusiveMinimum: 0
+
+    BomUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        output_quantity:
+          type: number
+        selling_price_per_unit:
+          type: number
+        materials:
+          type: array
+          items:
+            type: object
+            required: [material_id, quantity]
+            properties:
+              material_id:
+                type: string
+              quantity:
+                type: number
+
+    BomResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Bom'
+            - type: object
+              properties:
+                materials:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/BomMaterial'
+
+    BomDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Bom'
+            - type: object
+              properties:
+                materials:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/BomMaterial'
+
+    BomListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bom'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    ProductionPreviewRequest:
+      type: object
+      required: [product_id, target_output_quantity]
+      properties:
+        product_id:
+          type: string
+        target_output_quantity:
+          type: number
+          exclusiveMinimum: 0
+
+    ProductionPreviewResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            product_id:
+              type: string
+            bom_id:
+              type: string
+            target_output_quantity:
+              type: number
+            bom_output_quantity:
+              type: number
+            bom_multiplier:
+              type: number
+            materials:
+              type: array
+              items:
+                type: object
+                properties:
+                  material_id:
+                    type: string
+                  calculated_quantity:
+                    type: number
+                  unit:
+                    type: string
+                  available_quantity:
+                    type: number
+            stock_check:
+              type: object
+              properties:
+                can_produce:
+                  type: boolean
+                errors:
+                  type: array
+                  items:
+                    type: string
+
+    ProductionCommitRequest:
+      type: object
+      required: [product_id, bom_id, target_output_quantity, actual_output_quantity, materials]
+      properties:
+        product_id:
+          type: string
+        bom_id:
+          type: string
+        target_output_quantity:
+          type: number
+        actual_output_quantity:
+          type: number
+        materials:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [material_id, calculated_quantity, actual_quantity]
+            properties:
+              material_id:
+                type: string
+              calculated_quantity:
+                type: number
+              actual_quantity:
+                type: number
+        note:
+          type: string
+
+    Production:
+      type: object
+      properties:
+        id:
+          type: string
+        product_id:
+          type: string
+        bom_id:
+          type: string
+        target_output_quantity:
+          type: number
+        actual_output_quantity:
+          type: number
+        bom_multiplier:
+          type: number
+        note:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    ProductionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Production'
+            - type: object
+              properties:
+                materials:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      material_id:
+                        type: string
+                      calculated_quantity:
+                        type: number
+                      actual_quantity:
+                        type: number
+
+    ProductionDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Production'
+            - type: object
+              properties:
+                materials:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      material_id:
+                        type: string
+                      calculated_quantity:
+                        type: number
+                      actual_quantity:
+                        type: number
+
+    ProductionListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Production'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    SaleCreateRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [product_id, quantity]
+            properties:
+              product_id:
+                type: string
+              quantity:
+                type: number
+                exclusiveMinimum: 0
+
+    SaleItem:
+      type: object
+      properties:
+        product_id:
+          type: string
+        quantity:
+          type: number
+        unit_price:
+          type: number
+        subtotal:
+          type: number
+
+    Sale:
+      type: object
+      properties:
+        id:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SaleItem'
+        total:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+
+    SaleResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Sale'
+
+    SaleListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Sale'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    StockOpnameRequest:
+      type: object
+      required: [item_type, item_id, actual_quantity]
+      properties:
+        item_type:
+          type: string
+          enum: [MATERIAL, PRODUCT]
+        item_id:
+          type: string
+        actual_quantity:
+          type: number
+          minimum: 0
+        note:
+          type: string
+
+    StockOpname:
+      type: object
+      properties:
+        id:
+          type: string
+        item_type:
+          type: string
+        item_id:
+          type: string
+        system_quantity:
+          type: number
+        actual_quantity:
+          type: number
+        difference:
+          type: number
+        note:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    StockOpnameResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            opname_id:
+              type: string
+            item_id:
+              type: string
+            system_quantity:
+              type: number
+            actual_quantity:
+              type: number
+            difference:
+              type: number
+            stock_after:
+              type: number
+
+    StockOpnameListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/StockOpname'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    DashboardSummaryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            sales:
+              type: object
+              properties:
+                total:
+                  type: number
+                transaction_count:
+                  type: integer
+            production:
+              type: object
+              properties:
+                production_count:
+                  type: integer
+                output_quantity:
+                  type: number
+            low_stock:
+              type: object
+              properties:
+                materials:
+                  type: integer
+                products:
+                  type: integer
+            latest_activity_at:
+              type: string
+              format: date-time
+
+    InsightContentItem:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [WARNING, INFO, POSITIVE, OPPORTUNITY, TIP]
+        title:
+          type: string
+        body:
+          type: string
+
+    InsightGenerateRequest:
+      type: object
+      required: [period_from, period_to]
+      properties:
+        period_from:
+          type: string
+          format: date
+        period_to:
+          type: string
+          format: date
+
+    Insight:
+      type: object
+      properties:
+        id:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+        data_as_of:
+          type: string
+          format: date-time
+        is_stale:
+          type: boolean
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/InsightContentItem'
+
+    InsightGenerateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Insight'
+            - type: object
+              properties:
+                prompt_version:
+                  type: string
+                model_metadata:
+                  type: object
+                  properties:
+                    provider:
+                      type: string
+                    model:
+                      type: string
+
+    InsightListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Insight'
+        meta:
+          type: object
+          properties:
+            latest_business_activity_at:
+              type: string
+              format: date-time
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+
+    NullSuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            fields:
+              type: object
+              additionalProperties:
+                type: string
+
+  responses:
+    AuthRequired:
+      description: Autentikasi diperlukan
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: AUTH_REQUIRED
+              message: Authentication required
+
+    InvalidCredentials:
+      description: Email atau password salah
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: INVALID_CREDENTIALS
+              message: Invalid email or password
+
+    EmailAlreadyExists:
+      description: Email sudah terdaftar
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: EMAIL_ALREADY_EXISTS
+              message: Email already registered
+
+    ValidationError:
+      description: Validasi input gagal
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: VALIDATION_ERROR
+              message: Validation failed
+              fields:
+                email: Harus diisi
+
+    NotFound:
+      description: Resource tidak ditemukan
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: RESOURCE_NOT_FOUND
+              message: Resource not found
