@@ -178,6 +178,15 @@ paths:
                             type: boolean
                           message:
                             type: string
+                          counts:
+                            type: object
+                            properties:
+                              users:
+                                type: integer
+                              tenants:
+                                type: integer
+                              tenant_members:
+                                type: integer
                       tenant:
                         type: object
                         properties:
@@ -185,6 +194,41 @@ paths:
                             type: boolean
                           message:
                             type: string
+                          counts:
+                            type: object
+                            properties:
+                              materials:
+                                type: integer
+                              products:
+                                type: integer
+                              boms:
+                                type: integer
+                              productions:
+                                type: integer
+                              sales:
+                                type: integer
+                              ai_insights:
+                                type: integer
+              example:
+                success: true
+                data:
+                  auth:
+                    seeded: true
+                    message: Auth seed data inserted successfully
+                    counts:
+                      users: 1
+                      tenants: 1
+                      tenant_members: 1
+                  tenant:
+                    seeded: true
+                    message: Tenant seed data inserted successfully
+                    counts:
+                      materials: 5
+                      products: 2
+                      boms: 1
+                      productions: 1
+                      sales: 1
+                      ai_insights: 1
 
   /business:
     get:

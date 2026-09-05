@@ -735,10 +735,11 @@ export class TenantDO extends DurableObject {
     `).toArray();
   }
 
-  async seed(): Promise<{ seeded: boolean; message: string }> {
+  async seed(): Promise<{ seeded: boolean; message: string; counts: Record<string, number> }> {
     const existing = this.sql.exec('SELECT COUNT(*) as count FROM materials').one();
-    if ((existing.count as number) > 0) {
-      return { seeded: false, message: 'Tenant database already seeded' };
+    const materialCount = Number(existing.count);
+    if (materialCount > 0) {
+      return { seeded: false, message: 'Tenant database already seeded', counts: { materials: materialCount } };
     }
 
     const statements = getTenantSeedSQL();
@@ -746,6 +747,17 @@ export class TenantDO extends DurableObject {
       this.sql.exec(sql);
     }
 
-    return { seeded: true, message: 'Tenant seed data inserted' };
+    const materials = Number(this.sql.exec('SELECT COUNT(*) as count FROM materials').one().count);
+    const products = Number(this.sql.exec('SELECT COUNT(*) as count FROM products').one().count);
+    const boms = Number(this.sql.exec('SELECT COUNT(*) as count FROM boms').one().count);
+    const productions = Number(this.sql.exec('SELECT COUNT(*) as count FROM productions').one().count);
+    const sales = Number(this.sql.exec('SELECT COUNT(*) as count FROM sales').one().count);
+    const insights = Number(this.sql.exec('SELECT COUNT(*) as count FROM ai_insights').one().count);
+
+    return {
+      seeded: true,
+      message: 'Tenant seed data inserted successfully',
+      counts: { materials, products, boms, productions, sales, ai_insights: insights },
+    };
   }
 }

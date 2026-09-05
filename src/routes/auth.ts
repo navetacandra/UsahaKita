@@ -90,19 +90,24 @@ auth.post('/logout', authMiddleware, async (c) => {
 });
 
 auth.post('/seed', async (c) => {
-  const authDoId = c.env.AUTH_DO.idFromName('global');
-  const authDo = c.env.AUTH_DO.get(authDoId);
+  try {
+    const authDoId = c.env.AUTH_DO.idFromName('global');
+    const authDo = c.env.AUTH_DO.get(authDoId);
 
-  const authResult = await authDo.seed();
+    const authResult = await authDo.seed();
 
-  const tenantDoId = c.env.TENANT_DO.idFromName('ten_01');
-  const tenantDo = c.env.TENANT_DO.get(tenantDoId);
-  const tenantResult = await tenantDo.seed();
+    const tenantDoId = c.env.TENANT_DO.idFromName('ten_01');
+    const tenantDo = c.env.TENANT_DO.get(tenantDoId);
+    const tenantResult = await tenantDo.seed();
 
-  return c.json(successResponse({
-    auth: authResult,
-    tenant: tenantResult,
-  }));
+    return c.json(successResponse({
+      auth: authResult,
+      tenant: tenantResult,
+    }));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Seed failed';
+    return c.json(errorResponse('SEED_FAILED', message, 500), 500);
+  }
 });
 
 export default auth;

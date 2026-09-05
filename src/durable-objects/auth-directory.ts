@@ -187,10 +187,11 @@ export class AuthDirectoryDO extends DurableObject {
     }
   }
 
-  async seed(): Promise<{ seeded: boolean; message: string }> {
+  async seed(): Promise<{ seeded: boolean; message: string; counts: Record<string, number> }> {
     const existing = this.sql.exec('SELECT COUNT(*) as count FROM users').one();
-    if ((existing.count as number) > 0) {
-      return { seeded: false, message: 'Database already seeded' };
+    const userCount = Number(existing.count);
+    if (userCount > 0) {
+      return { seeded: false, message: 'Auth database already seeded', counts: { users: userCount } };
     }
 
     const statements = getAuthSeedSQL();
@@ -198,6 +199,14 @@ export class AuthDirectoryDO extends DurableObject {
       this.sql.exec(sql);
     }
 
-    return { seeded: true, message: 'Auth seed data inserted' };
+    const users = Number(this.sql.exec('SELECT COUNT(*) as count FROM users').one().count);
+    const tenants = Number(this.sql.exec('SELECT COUNT(*) as count FROM tenants').one().count);
+    const members = Number(this.sql.exec('SELECT COUNT(*) as count FROM tenant_members').one().count);
+
+    return {
+      seeded: true,
+      message: 'Auth seed data inserted successfully',
+      counts: { users, tenants, tenant_members: members },
+    };
   }
 }
