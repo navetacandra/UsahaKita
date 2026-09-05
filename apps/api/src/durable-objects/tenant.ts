@@ -348,7 +348,12 @@ export class TenantDO extends DurableObject {
   // ==================== PRODUCTIONS ====================
 
   async previewProduction(productId: string, targetOutputQuantity: number): Promise<Record<string, unknown>> {
-    const bom = this.sql.exec('SELECT * FROM boms WHERE product_id = ? ORDER BY created_at DESC', productId).one();
+    let bom: Record<string, SqlStorageValue>;
+    try {
+      bom = this.sql.exec('SELECT * FROM boms WHERE product_id = ? ORDER BY created_at DESC', productId).one();
+    } catch {
+      throw new Error('BOM_NOT_FOUND');
+    }
     if (!bom) throw new Error('BOM_NOT_FOUND');
 
     const bomOutput = bom.output_quantity as number;

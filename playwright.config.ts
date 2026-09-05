@@ -1,11 +1,14 @@
 import { defineConfig } from '@playwright/test';
 
-const baseURL = process.env.BASE_URL || 'https://usahakita.cfexpense-tracker123.workers.dev';
+const isLocal = process.env.E2E_LOCAL === 'true';
+const baseURL = isLocal
+  ? (process.env.BASE_URL || 'http://127.0.0.1:8787')
+  : (process.env.BASE_URL || 'https://usahakita.cfexpense-tracker123.workers.dev');
 
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
-  expect: { timeout: 5_000 },
+  expect: { timeout: 10_000 },
   fullyParallel: false,
   retries: 1,
   reporter: [['list']],
@@ -15,6 +18,14 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     headless: true,
   },
+  webServer: isLocal
+    ? {
+        command: 'pnpm exec wrangler dev --port 8787',
+        port: 8787,
+        reuseExistingServer: !process.env.CI,
+        timeout: 60_000,
+      }
+    : undefined,
   projects: [
     {
       name: 'chromium',

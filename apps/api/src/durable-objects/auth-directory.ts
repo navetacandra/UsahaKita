@@ -110,10 +110,15 @@ export class AuthDirectoryDO extends DurableObject {
     const valid = await cryptoUtils.verifyPassword(password, user.password_hash as string, user.password_salt as string);
     if (!valid) return null;
 
-    const membership = this.sql.exec(
-      'SELECT t.* FROM tenants t JOIN tenant_members tm ON t.id = tm.tenant_id WHERE tm.user_id = ?',
-      user.id as string,
-    ).one();
+    let membership: Record<string, SqlStorageValue>;
+    try {
+      membership = this.sql.exec(
+        'SELECT t.* FROM tenants t JOIN tenant_members tm ON t.id = tm.tenant_id WHERE tm.user_id = ?',
+        user.id as string,
+      ).one();
+    } catch {
+      return null;
+    }
 
     if (!membership) return null;
 
@@ -144,10 +149,15 @@ export class AuthDirectoryDO extends DurableObject {
 
   async validateSession(token: string): Promise<{ userId: string; tenantId: string; sessionId: string } | null> {
     const tokenHash = await cryptoUtils.hashTokenAsync(token);
-    const session = this.sql.exec(
-      'SELECT * FROM sessions WHERE token_hash = ? AND revoked_at IS NULL AND expires_at > ?',
-      tokenHash, new Date().toISOString(),
-    ).one();
+    let session: Record<string, SqlStorageValue>;
+    try {
+      session = this.sql.exec(
+        'SELECT * FROM sessions WHERE token_hash = ? AND revoked_at IS NULL AND expires_at > ?',
+        tokenHash, new Date().toISOString(),
+      ).one();
+    } catch {
+      return null;
+    }
 
     if (!session) return null;
 
