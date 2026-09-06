@@ -81,15 +81,11 @@ export function InsightsPage({ onNavigate }: InsightsPageProps) {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
       const res = await api.insights.generate(thirtyDaysAgo, today);
       if (res.success && res.data) {
-        const err = (res.data as Record<string, unknown>).ai_error as string | undefined;
-        if (err) {
-          showToast('warning', `AI tidak tersedia: ${err}`);
-        } else {
-          showToast('success', 'Insight AI berhasil dibuat!');
-        }
+        showToast('success', 'Insight AI berhasil dibuat!');
         loadInsights();
       } else {
-        showToast('error', 'Gagal menghasilkan insight AI.');
+        const msg = res.error?.message || 'Gagal menghasilkan insight AI.';
+        showToast('error', msg);
       }
     } catch {
       showToast('error', 'Terjadi kesalahan saat menghasilkan insight.');

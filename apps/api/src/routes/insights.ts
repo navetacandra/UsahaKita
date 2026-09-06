@@ -82,8 +82,11 @@ Return ONLY a JSON array. No markdown, no explanation. Format: [{"type":"INFO","
   }
 
   if (content.length === 0) {
-    const errMsg = aiResult.error_message || 'Jalankan generate ulang atau periksa koneksi AI provider.';
-    content.push({ type: 'INFO', title: 'Belum ada insight', body: errMsg });
+    // AI failed — return error, do not save placeholder insight
+    return c.json(errorResponse(
+      'AI_PROVIDER_ERROR',
+      aiResult.error_message || 'AI provider tidak tersedia. Coba lagi nanti.',
+    ), 502);
   }
 
   const insight = await tenantDo.createInsight(period_from, period_to, content, modelMetadata);
@@ -93,7 +96,6 @@ Return ONLY a JSON array. No markdown, no explanation. Format: [{"type":"INFO","
       status: aiResult.status,
       latency_ms: aiResult.latency_ms,
       key_index: aiResult.api_key_index,
-      error: aiResult.error_message || undefined,
     },
   }), 201);
 });
