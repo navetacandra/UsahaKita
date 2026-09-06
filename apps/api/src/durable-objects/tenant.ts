@@ -125,6 +125,12 @@ export class TenantDO extends DurableObject {
     } catch {
       // column already exists — ignore
     }
+    // Migration: add selling_price column to products if missing
+    try {
+      this.sql.exec("ALTER TABLE products ADD COLUMN selling_price REAL NOT NULL DEFAULT 0");
+    } catch {
+      // column already exists — ignore
+    }
   }
 
   private now(): string {
@@ -297,6 +303,24 @@ export class TenantDO extends DurableObject {
     }
     const now = this.now();
     this.sql.exec('UPDATE products SET hidden_at = ?, updated_at = ? WHERE id = ?', now, now, id);
+  }
+
+  async updateProduct(id: string, data: { name?: string; unit?: string; minimum_stock?: number; selling_price?: number }): Promise<Record<string, SqlStorageValue>> {
+    try {
+      this.sql.exec('SELECT * FROM products WHERE id = ?', id).one();
+    } catch {
+      this.itemNotFound('Product');
+    }
+    const now = this.now();
+    const sets: string[] = ['updated_at = ?'];
+    const params: SqlStorageValue[] = [now];
+    if (data.name !== undefined) { sets.push('name = ?'); params.push(data.name); }
+    if (data.unit !== undefined) { sets.push('unit = ?'); params.push(data.unit); }
+    if (data.minimum_stock !== undefined) { sets.push('minimum_stock = ?'); params.push(data.minimum_stock); }
+    if (data.selling_price !== undefined) { sets.push('selling_price = ?'); params.push(data.selling_price); }
+    params.push(id);
+    this.sql.exec(`UPDATE products SET ${sets.join(', ')} WHERE id = ?`, ...params);
+    return this.sql.exec('SELECT * FROM products WHERE id = ?', id).one();
   }
 
   // ==================== BOMs ====================
@@ -569,8 +593,12 @@ export class TenantDO extends DurableObject {
         if (!product) throw new Error('PRODUCT_NOT_FOUND');
         if (item.quantity > (product.current_stock as number)) throw new Error('INSUFFICIENT_PRODUCT_STOCK');
 
-        const bom = this.sql.exec('SELECT * FROM boms WHERE product_id = ? ORDER BY created_at DESC', item.product_id).one();
-        const unitPrice = (bom?.selling_price_per_unit as number) || 0;
+        // Checkout price: prefer product.selling_price, fallback to BoM price
+        const productPrice = (product.selling_price as number) || 0;
+        const bom = productPrice === 0
+          ? this.sql.exec('SELECT * FROM boms WHERE product_id = ? ORDER BY created_at DESC', item.product_id).one()
+          : null;
+        const unitPrice = productPrice || ((bom?.selling_price_per_unit as number) || 0);
         const subtotal = unitPrice * item.quantity;
         total += subtotal;
 

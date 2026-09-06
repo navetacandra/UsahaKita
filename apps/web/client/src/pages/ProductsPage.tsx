@@ -43,6 +43,12 @@ export function ProductsPage({ onNavigate }: ProductsPageProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Product | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editUnit, setEditUnit] = useState('pcs');
+  const [editSellingPrice, setEditSellingPrice] = useState(0);
+  const [editMinimumStock, setEditMinimumStock] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchProducts = async () => {
@@ -148,6 +154,41 @@ export function ProductsPage({ onNavigate }: ProductsPageProps) {
         fetchProducts();
       } else {
         showToast('error', res.error?.message || 'Gagal menghapus produk.');
+      }
+    } catch {
+      showToast('error', 'Terjadi kesalahan sistem.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenEdit = (prod: Product) => {
+    setEditTarget(prod);
+    setEditName(prod.name);
+    setEditUnit(prod.unit);
+    setEditSellingPrice(prod.selling_price || 0);
+    setEditMinimumStock(prod.minimum_stock || 0);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditProduct = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editTarget || !editName.trim()) return;
+    setActionLoading(true);
+    try {
+      const res = await api.products.update(editTarget.id, {
+        name: editName.trim(),
+        unit: editUnit,
+        selling_price: editSellingPrice,
+        minimum_stock: editMinimumStock,
+      });
+      if (res.success) {
+        showToast('success', `Produk "${editName}" berhasil diperbarui.`);
+        setIsEditModalOpen(false);
+        setEditTarget(null);
+        fetchProducts();
+      } else {
+        showToast('error', res.error?.message || 'Gagal memperbarui produk.');
       }
     } catch {
       showToast('error', 'Terjadi kesalahan sistem.');
@@ -299,6 +340,14 @@ export function ProductsPage({ onNavigate }: ProductsPageProps) {
                             className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-400 rounded-md transition-all active:translate-y-0.5"
                           >
                             Hapus
+                          </button>
+                          <button
+                            id={`prod-btn-edit-${prod.id}`}
+                            onClick={() => handleOpenEdit(prod)}
+                            title="Edit Produk"
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-400 rounded-md transition-all active:translate-y-0.5"
+                          >
+                            Edit
                           </button>
                         </div>
                       </td>
@@ -560,6 +609,104 @@ export function ProductsPage({ onNavigate }: ProductsPageProps) {
                 {actionLoading ? 'Menghapus...' : 'Ya, Sembunyikan'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {isEditModalOpen && editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white border-2 border-slate-900 shadow-[6px_6px_0px_#0f172a] rounded-xl p-5 space-y-4">
+            <div className="flex justify-between items-center border-b-2 border-slate-900 pb-3">
+              <h3 className="font-extrabold text-slate-900">Edit Produk</h3>
+              <button onClick={() => setIsEditModalOpen(false)} className="p-1 hover:bg-slate-100 rounded">
+                <X className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditProduct} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">
+                  Nama Produk <span className="text-rose-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-900 rounded-lg text-sm font-medium focus:bg-white focus:outline-hidden"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase mb-1">
+                    Satuan Jual <span className="text-rose-600">*</span>
+                  </label>
+                  <select
+                    value={editUnit}
+                    onChange={(e) => setEditUnit(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-900 rounded-lg text-sm font-medium focus:bg-white focus:outline-hidden"
+                  >
+                    <option value="pcs">pcs (Satuan)</option>
+                    <option value="porsi">porsi</option>
+                    <option value="box">box</option>
+                    <option value="pack">pack</option>
+                    <option value="cup">cup</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 uppercase mb-1">
+                    Harga Jual Satuan (IDR) <span className="text-rose-600">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={500}
+                    required
+                    value={editSellingPrice}
+                    onChange={(e) => setEditSellingPrice(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-900 rounded-lg text-sm font-bold text-blue-700 focus:bg-white focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">
+                  Batas Stok Minimum ({editUnit})
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={editMinimumStock}
+                  onChange={(e) => setEditMinimumStock(parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-900 rounded-lg text-sm font-medium focus:bg-white focus:outline-hidden"
+                />
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-[11px] text-amber-900">
+                Harga jual yang diubah akan berlaku untuk transaksi selanjutnya. Transaksi sebelumnya tetap menggunakan harga saat checkout.
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 border-2 border-slate-900 font-bold rounded-lg hover:bg-slate-100"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="px-4 py-2 bg-blue-600 text-white border-2 border-slate-900 shadow-[2px_2px_0px_#0f172a] font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {actionLoading ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

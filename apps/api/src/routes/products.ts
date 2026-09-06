@@ -71,4 +71,17 @@ products.delete('/:id', async (c) => {
   }
 });
 
+products.patch('/:id', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json<{ name?: string; unit?: string; minimum_stock?: number; selling_price?: number }>();
+  const tenantDo = getTenantDo(c);
+  try {
+    const product = await tenantDo.updateProduct(id, body);
+    return c.json(successResponse(product));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'INTERNAL_ERROR';
+    return c.json(errorResponse(msg, msg), 404);
+  }
+});
+
 export default products;

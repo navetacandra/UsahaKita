@@ -577,6 +577,24 @@ export const api = {
       saveStore(store);
       return { success: true, data: { deleted: true } };
     },
+
+    async update(product_id: string, data: { name?: string; unit?: string; minimum_stock?: number; selling_price?: number }): Promise<ApiResponse<Product>> {
+      const res = await http<Product>(`/products/${product_id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+      if (res.data) return res.data;
+
+      // Local fallback
+      const store = getStore();
+      const idx = store.products.findIndex((p) => p.id === product_id);
+      if (idx >= 0) {
+        Object.assign(store.products[idx], data);
+        saveStore(store);
+        return { success: true, data: store.products[idx] };
+      }
+      return { success: false, error: { code: 'NOT_FOUND', message: 'Produk tidak ditemukan' } };
+    },
   },
 
   // Bill of Materials (BoM / Resep)
