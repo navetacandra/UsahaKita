@@ -564,6 +564,19 @@ export const api = {
       const movs = store.movements.filter((m) => m.item_id === product_id);
       return { success: true, data: movs };
     },
+
+    async delete(product_id: string): Promise<ApiResponse<{ deleted: boolean }>> {
+      const res = await http<{ deleted: boolean }>(`/products/${product_id}`, {
+        method: 'DELETE',
+      });
+      if (res.data) return res.data;
+
+      // Local fallback
+      const store = getStore();
+      store.products = store.products.filter((p) => p.id !== product_id);
+      saveStore(store);
+      return { success: true, data: { deleted: true } };
+    },
   },
 
   // Bill of Materials (BoM / Resep)

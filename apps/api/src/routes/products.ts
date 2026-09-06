@@ -59,4 +59,16 @@ products.get('/:id/movements', async (c) => {
   return c.json(successResponse(result.data, result.meta));
 });
 
+products.delete('/:id', async (c) => {
+  const id = c.req.param('id');
+  const tenantDo = getTenantDo(c);
+  try {
+    await tenantDo.hideProduct(id);
+    return c.json(successResponse({ deleted: true }));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'INTERNAL_ERROR';
+    return c.json(errorResponse(msg, msg), 404);
+  }
+});
+
 export default products;

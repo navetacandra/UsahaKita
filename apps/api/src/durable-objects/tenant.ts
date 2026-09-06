@@ -29,6 +29,7 @@ export class TenantDO extends DurableObject {
         unit TEXT NOT NULL,
         current_stock REAL NOT NULL DEFAULT 0,
         minimum_stock REAL NOT NULL DEFAULT 0,
+        hidden_at TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -117,6 +118,13 @@ export class TenantDO extends DurableObject {
       CREATE INDEX IF NOT EXISTS idx_sales_created ON sales(created_at);
       CREATE INDEX IF NOT EXISTS idx_productions_product ON productions(product_id);
     `);
+
+    // Migration: add hidden_at column to products if missing
+    try {
+      this.sql.exec("ALTER TABLE products ADD COLUMN hidden_at TEXT");
+    } catch {
+      // column already exists — ignore
+    }
   }
 
   private now(): string {
@@ -216,10 +224,10 @@ export class TenantDO extends DurableObject {
   // ==================== PRODUCTS ====================
 
   async listProducts(page = 1, limit = 20, search?: string): Promise<{ data: Record<string, SqlStorageValue>[]; meta: { page: number; limit: number; total: number } }> {
-    let query = 'SELECT p.*, b.selling_price_per_unit FROM products p LEFT JOIN boms b ON p.id = b.product_id';
+    let query = 'SELECT p.*, b.selling_price_per_unit FROM products p LEFT JOIN boms b ON p.id = b.product_id WHERE p.hidden_at IS NULL';
     const params: SqlStorageValue[] = [];
     if (search) {
-      query += ' WHERE p.name LIKE ?';
+      query += ' AND p.name LIKE ?';
       params.push(`%${search}%`);
     }
     query += ' ORDER BY p.created_at DESC';
@@ -279,6 +287,16 @@ export class TenantDO extends DurableObject {
       'PRODUCT', productId,
     ).toArray();
     return this.paginate(items, page, limit);
+  }
+
+  async hideProduct(id: string): Promise<void> {
+    try {
+      this.sql.exec('SELECT * FROM products WHERE id = ?', id).one();
+    } catch {
+      this.itemNotFound('Product');
+    }
+    const now = this.now();
+    this.sql.exec('UPDATE products SET hidden_at = ?, updated_at = ? WHERE id = ?', now, now, id);
   }
 
   // ==================== BOMs ====================

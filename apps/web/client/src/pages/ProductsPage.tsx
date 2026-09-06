@@ -32,7 +32,7 @@ export function ProductsPage({ onNavigate }: ProductsPageProps) {
 
   // Add product form
   const [name, setName] = useState('');
-  const [unit, setUnit] = useState('');
+  const [unit, setUnit] = useState('pcs');
   const [sellingPrice, setSellingPrice] = useState(0);
   const [minimumStock, setMinimumStock] = useState(0);
 
@@ -41,6 +41,8 @@ export function ProductsPage({ onNavigate }: ProductsPageProps) {
   const [outgoingReasonType, setOutgoingReasonType] = useState<'DAMAGED' | 'EXPIRED' | 'SAMPLE' | 'OTHER'>('DAMAGED');
   const [outgoingNote, setOutgoingNote] = useState('');
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchProducts = async () => {
@@ -129,6 +131,26 @@ export function ProductsPage({ onNavigate }: ProductsPageProps) {
       }
     } catch {
       showToast('error', 'Terjadi gangguan sistem.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!deleteTarget) return;
+    setActionLoading(true);
+    try {
+      const res = await api.products.delete(deleteTarget.id);
+      if (res.success) {
+        showToast('success', `Produk "${deleteTarget.name}" berhasil dihapus.`);
+        setIsDeleteConfirmOpen(false);
+        setDeleteTarget(null);
+        fetchProducts();
+      } else {
+        showToast('error', res.error?.message || 'Gagal menghapus produk.');
+      }
+    } catch {
+      showToast('error', 'Terjadi kesalahan sistem.');
     } finally {
       setActionLoading(false);
     }
@@ -268,7 +290,15 @@ export function ProductsPage({ onNavigate }: ProductsPageProps) {
                             className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-rose-900 bg-rose-50 hover:bg-rose-100 border border-rose-800 rounded-md transition-all active:translate-y-0.5"
                           >
                             <ArrowUpRight className="w-3.5 h-3.5" />
-                            Keluar Afkir
+                            Keluar
+                          </button>
+                          <button
+                            id={`prod-btn-delete-${prod.id}`}
+                            onClick={() => { setDeleteTarget(prod); setIsDeleteConfirmOpen(true); }}
+                            title="Sembunyikan Produk (riwayat penjualan tetap tersimpan)"
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-400 rounded-md transition-all active:translate-y-0.5"
+                          >
+                            Hapus
                           </button>
                         </div>
                       </td>
@@ -499,6 +529,40 @@ export function ProductsPage({ onNavigate }: ProductsPageProps) {
             : []
         }
       />
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteConfirmOpen && deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="w-full max-w-sm bg-white border-2 border-slate-900 shadow-[6px_6px_0px_#0f172a] rounded-xl p-5 space-y-4">
+            <div className="flex justify-between items-center border-b-2 border-slate-900 pb-3">
+              <h3 className="font-extrabold text-slate-900">Sembunyikan Produk</h3>
+              <button onClick={() => setIsDeleteConfirmOpen(false)} className="p-1 hover:bg-slate-100 rounded">
+                <X className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-600">
+              Produk <strong>"{deleteTarget.name}"</strong> akan disembunyikan dari daftar. Riwayat penjualan dan data stok tetap tersimpan.
+            </p>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                className="px-4 py-2 border-2 border-slate-900 font-bold rounded-lg hover:bg-slate-100 text-xs"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteProduct}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white border-2 border-slate-900 shadow-[2px_2px_0px_#0f172a] font-bold rounded-lg text-xs disabled:opacity-50"
+              >
+                {actionLoading ? 'Menghapus...' : 'Ya, Sembunyikan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
