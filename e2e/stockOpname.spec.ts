@@ -21,11 +21,11 @@ test.describe('Stock Opname', () => {
     await expect(page.locator('text=Stok Opname (Penyesuaian Fisik)')).toBeVisible({ timeout: 10000 });
 
     await page.click('#opname-select-mat');
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => document.querySelectorAll('#opname-item-dropdown option[value]').length > 1, { timeout: 10000 });
 
     await page.selectOption('#opname-item-dropdown', { index: 1 });
-    await page.waitForTimeout(500);
 
+    await expect(page.locator('#opname-actual-input')).toBeVisible({ timeout: 10000 });
     await page.fill('#opname-actual-input', '15');
     await page.fill('#opname-note-input', 'Opname E2E material');
 
@@ -41,11 +41,11 @@ test.describe('Stock Opname', () => {
     await expect(page.locator('text=Stok Opname (Penyesuaian Fisik)')).toBeVisible({ timeout: 10000 });
 
     await page.click('#opname-select-prod');
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => document.querySelectorAll('#opname-item-dropdown option[value]').length > 1, { timeout: 10000 });
 
     await page.selectOption('#opname-item-dropdown', { index: 1 });
-    await page.waitForTimeout(500);
 
+    await expect(page.locator('#opname-actual-input')).toBeVisible({ timeout: 10000 });
     await page.fill('#opname-actual-input', '30');
     await page.fill('#opname-note-input', 'Opname E2E product');
 
