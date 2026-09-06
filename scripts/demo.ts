@@ -213,6 +213,12 @@ async function clickProdOut(page: Page, index = 0) {
     await pause(500);
     await snap(page, 'bom-editor-new');
 
+    // Navigate back: wait for #bom-btn-create which only exists on list page
+    await page.click('#tab-bom');
+    await page.waitForSelector('#bom-btn-create', { state: 'visible', timeout: 10000 });
+    await pause(500);
+    await snap(page, 'bom-list-after-create');
+
     // ─── 18. Production List Page ────────────────────────────────────
     console.log('18 — Production List');
     await page.click('#tab-production');
