@@ -202,71 +202,71 @@ Swagger UI tersedia di: `http://localhost:5173/docs/swagger`
 
 | Login Page | Register Page |
 |:---------:|:------------:|
-| ![Login](test-results/demo/01-login-page.png) | ![Register](test-results/demo/02-register-page.png) |
+| ![Login](docs/screenshots/01-login-page.png) | ![Register](docs/screenshots/02-register-page.png) |
 
 ### Dashboard
 
 | Dashboard Utama | Metrik Penjualan |
 |:--------------:|:---------------:|
-| ![Dashboard](test-results/demo/03-dashboard.png) | ![Metrics](test-results/demo/04-dashboard-metrics.png) |
+| ![Dashboard](docs/screenshots/03-dashboard.png) | ![Metrics](docs/screenshots/04-dashboard-metrics.png) |
 
 ### Manajemen Bahan Baku
 
 | Daftar Material | Tambah Material | Stok Masuk |
 |:--------------:|:--------------:|:----------:|
-| ![Materials](test-results/demo/05-materials-list.png) | ![Add Material](test-results/demo/06-materials-add-modal.png) | ![Stock IN](test-results/demo/07-materials-stock-in-modal.png) |
+| ![Materials](docs/screenshots/05-materials-list.png) | ![Add Material](docs/screenshots/06-materials-add-modal.png) | ![Stock IN](docs/screenshots/07-materials-stock-in-modal.png) |
 
 ### Manajemen Produk
 
 | Daftar Produk | Tambah Produk | Produk Keluar |
 |:------------:|:------------:|:------------:|
-| ![Products](test-results/demo/08-products-list.png) | ![Add Product](test-results/demo/09-products-add-modal.png) | ![Outgoing](test-results/demo/10-products-outgoing-modal.png) |
+| ![Products](docs/screenshots/08-products-list.png) | ![Add Product](docs/screenshots/09-products-add-modal.png) | ![Outgoing](docs/screenshots/10-products-outgoing-modal.png) |
 
 ### Riwayat Mutasi Stok
 
 | Daftar Mutasi | Filter Material |
 |:-------------:|:--------------:|
-| ![Movements](test-results/demo/11-movements-list.png) | ![Filter](test-results/demo/12-movements-filter-material.png) |
+| ![Movements](docs/screenshots/11-movements-list.png) | ![Filter](docs/screenshots/12-movements-filter-material.png) |
 
 ### Stok Opname
 
 | Halaman Opname | Pilih Material |
 |:--------------:|:-------------:|
-| ![Opname](test-results/demo/13-stock-opname-page.png) | ![Selected](test-results/demo/14-stock-opname-material-selected.png) |
+| ![Opname](docs/screenshots/13-stock-opname-page.png) | ![Selected](docs/screenshots/14-stock-opname-material-selected.png) |
 
 ### Resep & Komposisi (BoM)
 
 | Daftar BoM | Editor BoM |
 |:----------:|:----------:|
-| ![BoM List](test-results/demo/15-bom-list.png) | ![BoM Editor](test-results/demo/16-bom-editor-new.png) |
+| ![BoM List](docs/screenshots/15-bom-list.png) | ![BoM Editor](docs/screenshots/16-bom-editor-new.png) |
 
 ### Sesi Produksi (5 Langkah)
 
 | Langkah 1: Pilih Produk | Langkah 2: Kalkulasi BoM |
 |:----------------------:|:-----------------------:|
-| ![Step 1](test-results/demo/19-production-step1.png) | ![Step 2](test-results/demo/20-production-step2.png) |
+| ![Step 1](docs/screenshots/19-production-step1.png) | ![Step 2](docs/screenshots/20-production-step2.png) |
 
 | Langkah 3: Penyesuaian | Langkah 4: Output Riil |
 |:---------------------:|:---------------------:|
-| ![Step 3](test-results/demo/21-production-step3.png) | ![Step 4](test-results/demo/22-production-step4.png) |
+| ![Step 3](docs/screenshots/21-production-step3.png) | ![Step 4](docs/screenshots/22-production-step4.png) |
 
 ### Kasir POS
 
 | Halaman POS | Keranjang | Checkout | Struk |
 |:----------:|:--------:|:--------:|:-----:|
-| ![POS](test-results/demo/23-pos-page.png) | ![Cart](test-results/demo/24-pos-cart-with-item.png) | ![Checkout](test-results/demo/25-pos-checkout-modal.png) | ![Receipt](test-results/demo/26-pos-receipt.png) |
+| ![POS](docs/screenshots/23-pos-page.png) | ![Cart](docs/screenshots/24-pos-cart-with-item.png) | ![Checkout](docs/screenshots/25-pos-checkout-modal.png) | ![Receipt](docs/screenshots/26-pos-receipt.png) |
 
 ### Riwayat Penjualan & Insight
 
 | Riwayat Penjualan | AI Insight |
 |:-----------------:|:----------:|
-| ![Sales](test-results/demo/27-sales-history.png) | ![Insights](test-results/demo/28-insights-page.png) |
+| ![Sales](docs/screenshots/27-sales-history.png) | ![Insights](docs/screenshots/28-insights-page.png) |
 
 ### Pengaturan
 
 | Pengaturan | Identitas Usaha |
 |:---------:|:--------------:|
-| ![Settings](test-results/demo/29-settings-page.png) | ![Business](test-results/demo/30-settings-business.png) |
+| ![Settings](docs/screenshots/29-settings-page.png) | ![Business](docs/screenshots/30-settings-business.png) |
 
 ---
 

@@ -16,7 +16,7 @@ const BASE_URL = process.argv.includes('--deployed')
   ? 'https://usahakita.cfexpense-tracker123.workers.dev'
   : 'http://localhost:5173';
 
-const SCREENSHOT_DIR = 'test-results/demo';
+const SCREENSHOT_DIR = 'docs/screenshots';
 let stepIndex = 0;
 
 mkdirSync(SCREENSHOT_DIR, { recursive: true });
