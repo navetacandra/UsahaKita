@@ -34,13 +34,13 @@ export function MaterialsPage({ onNavigate }: MaterialsPageProps) {
 
   // Form states - Add Material
   const [newName, setNewName] = useState('');
-  const [newUnit, setNewUnit] = useState('kg');
-  const [newPrecision, setNewPrecision] = useState(2);
-  const [newMinStock, setNewMinStock] = useState(5);
+  const [newUnit, setNewUnit] = useState('');
+  const [newPrecision, setNewPrecision] = useState(0);
+  const [newMinStock, setNewMinStock] = useState(0);
   const [newInitialStock, setNewInitialStock] = useState(0);
 
   // Form states - Movement
-  const [movementQty, setMovementQty] = useState<number>(1);
+  const [movementQty, setMovementQty] = useState<number>(0);
   const [movementReason, setMovementReason] = useState('');
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -67,8 +67,8 @@ export function MaterialsPage({ onNavigate }: MaterialsPageProps) {
   const handleOpenMovement = (mat: Material, type: 'IN' | 'OUT') => {
     setSelectedMaterial(mat);
     setMovementType(type);
-    setMovementQty(1);
-    setMovementReason(type === 'IN' ? 'Pembelian bahan baru' : 'Susut / terpakai non-produksi');
+    setMovementQty(0);
+    setMovementReason('');
     setIsMovementModalOpen(true);
   };
 

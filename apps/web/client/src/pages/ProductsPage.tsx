@@ -32,12 +32,12 @@ export function ProductsPage({ onNavigate }: ProductsPageProps) {
 
   // Add product form
   const [name, setName] = useState('');
-  const [unit, setUnit] = useState('pcs');
-  const [sellingPrice, setSellingPrice] = useState(5000);
-  const [minimumStock, setMinimumStock] = useState(15);
+  const [unit, setUnit] = useState('');
+  const [sellingPrice, setSellingPrice] = useState(0);
+  const [minimumStock, setMinimumStock] = useState(0);
 
   // Outgoing form
-  const [outgoingQty, setOutgoingQty] = useState(1);
+  const [outgoingQty, setOutgoingQty] = useState(0);
   const [outgoingReasonType, setOutgoingReasonType] = useState<'DAMAGED' | 'EXPIRED' | 'SAMPLE' | 'OTHER'>('DAMAGED');
   const [outgoingNote, setOutgoingNote] = useState('');
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -92,7 +92,7 @@ export function ProductsPage({ onNavigate }: ProductsPageProps) {
 
   const handleOpenOutgoing = (prod: Product) => {
     setSelectedProduct(prod);
-    setOutgoingQty(1);
+    setOutgoingQty(0);
     setOutgoingReasonType('DAMAGED');
     setOutgoingNote('');
     setIsOutgoingModalOpen(true);

@@ -25,13 +25,13 @@ export function BomEditorPage({ bomId, onNavigate }: BomEditorPageProps) {
   // Form state
   const [name, setName] = useState('');
   const [productId, setProductId] = useState('');
-  const [outputQuantity, setOutputQuantity] = useState(20);
-  const [outputUnit, setOutputUnit] = useState('pcs');
-  const [sellingPrice, setSellingPrice] = useState(5000);
+  const [outputQuantity, setOutputQuantity] = useState(0);
+  const [outputUnit, setOutputUnit] = useState('');
+  const [sellingPrice, setSellingPrice] = useState(0);
   const [materialRows, setMaterialRows] = useState<MaterialRow[]>([]);
 
   // Fractional simulation state
-  const [simTargetQty, setSimTargetQty] = useState(10);
+  const [simTargetQty, setSimTargetQty] = useState(0);
 
   useEffect(() => {
     async function init() {

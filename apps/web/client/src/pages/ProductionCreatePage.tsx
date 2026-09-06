@@ -37,7 +37,7 @@ export function ProductionCreatePage({ onNavigate }: ProductionCreatePageProps) 
 
   // Step 1: Product & Target Qty
   const [selectedProductId, setSelectedProductId] = useState<string>('');
-  const [targetOutputQty, setTargetOutputQty] = useState<number>(10);
+  const [targetOutputQty, setTargetOutputQty] = useState<number>(0);
 
   // Step 2 & 3: Preview & Adjustments
   const [previewData, setPreviewData] = useState<ProductionPreview | null>(null);
@@ -45,7 +45,7 @@ export function ProductionCreatePage({ onNavigate }: ProductionCreatePageProps) 
   const [previewLoading, setPreviewLoading] = useState(false);
 
   // Step 4: Actual Output Qty & Notes
-  const [actualOutputQty, setActualOutputQty] = useState<number>(10);
+  const [actualOutputQty, setActualOutputQty] = useState<number>(0);
   const [productionNote, setProductionNote] = useState<string>('');
 
   // Step 5: Submit Modal
