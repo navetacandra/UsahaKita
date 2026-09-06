@@ -52,12 +52,15 @@ export async function aiChat(env: Env, options: AiChatOptions): Promise<AiChatRe
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
-          'Accept-Language': 'en-US,en',
+          'Accept-Language': 'id-ID,id',
           'Accept': '*/*',
         },
         body: JSON.stringify({
           model,
-          messages: options.messages,
+          messages: [
+            { role: 'system', content: 'Anda adalah asisten bisnis UMKM. Selalu balas dalam Bahasa Indonesia. Jangan gunakan bahasa Inggris.' },
+            ...options.messages,
+          ],
           max_tokens: options.max_tokens || 4096,
           temperature: options.temperature ?? 0.7,
         }),
