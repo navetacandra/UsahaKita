@@ -67,7 +67,7 @@ export async function aiChat(env: Env, options: AiChatOptions): Promise<AiChatRe
             max_tokens: options.max_tokens || 4096,
             temperature: options.temperature ?? 0.7,
           }),
-          signal: AbortSignal.timeout(60000),
+          signal: AbortSignal.timeout(15 * 1_000),
         });
 
         const latency = Date.now() - started;
