@@ -48,13 +48,19 @@ insights.post('/generate', async (c) => {
   const aiApiKey = c.env.AI_API_KEY || 'Bearer public';
 
   try {
+    const sessionId = `ses_${crypto.randomUUID().replace(/-/g, '')}`;
+    const requestId = `msg_${crypto.randomUUID().replace(/-/g, '')}`;
+
     const response = await fetch(`${aiBaseUrl}/zen/v1/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': aiApiKey,
-        'x-opencode-client': 'usahakita',
+        'x-opencode-client': 'desktop',
+        'x-opencode-session': sessionId,
+        'x-opencode-request': requestId,
         'x-opencode-project': 'global',
+        'Accept': '*/*',
       },
       body: JSON.stringify({
         model: aiModel,
