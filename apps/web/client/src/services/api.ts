@@ -1313,4 +1313,15 @@ export const api = {
     localStorage.removeItem(STORAGE_KEY);
     window.location.reload();
   },
+
+  // Server-side reset (demo account only)
+  dev: {
+    async resetData(): Promise<ApiResponse<{ seeded: boolean; counts: Record<string, number> }>> {
+      const res = await http<{ seeded: boolean; counts: Record<string, number> }>('/dev/reset-data', {
+        method: 'POST',
+      });
+      if (res.data) return res.data;
+      return { success: false, error: { code: 'RESET_FAILED', message: 'Gagal mereset data.' } };
+    },
+  },
 };

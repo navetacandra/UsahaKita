@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { api } from '../services/api';
 import { Settings, Store, User, RotateCcw, LogOut, CheckCircle2, Shield } from 'lucide-react';
 import { ConfirmationModal } from '../components/common/ConfirmationModal';
 
@@ -16,6 +17,9 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
   const [businessType, setBusinessType] = useState((business as any)?.business_type || 'F&B / Kuliner');
   const [saved, setSaved] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
+  const isDemoAccount = user?.email === 'owner@tokomaju.com';
 
   const handleSaveBusiness = (e: FormEvent) => {
     e.preventDefault();
@@ -24,11 +28,22 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleResetDemoData = () => {
-    localStorage.removeItem('usahakita_store_v1');
-    showToast('info', 'Data lokal direset ke pengaturan awal.');
-    setIsResetConfirmOpen(false);
-    window.location.reload();
+  const handleResetDemoData = async () => {
+    setIsResetting(true);
+    try {
+      const res = await api.dev.resetData();
+      if (res.success) {
+        showToast('success', 'Data berhasil direset ke data awal demo.');
+        setIsResetConfirmOpen(false);
+        window.location.reload();
+      } else {
+        showToast('error', res.error?.message || 'Gagal mereset data.');
+      }
+    } catch {
+      showToast('error', 'Terjadi kesalahan saat mereset data.');
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   return (
@@ -140,34 +155,38 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
         </div>
 
         {/* Section 3: Zona Demo Data */}
-        <div className="bg-rose-50 border-2 border-rose-900 shadow-[4px_4px_0px_#881337] rounded-xl p-5 sm:p-6 space-y-3">
-          <div className="flex items-center gap-2">
-            <RotateCcw className="w-4 h-4 text-rose-800" />
-            <h2 className="font-black text-rose-950 text-sm sm:text-base">
-              Reset Data Sampel Demo
-            </h2>
+        {isDemoAccount && (
+          <div className="bg-rose-50 border-2 border-rose-900 shadow-[4px_4px_0px_#881337] rounded-xl p-5 sm:p-6 space-y-3">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-rose-800" />
+              <h2 className="font-black text-rose-950 text-sm sm:text-base">
+                Reset Data Sampel Demo
+              </h2>
+            </div>
+            <p className="text-xs text-rose-900 leading-relaxed">
+              Mereset seluruh data tenant ke kondisi awal pabrik (bahan baku, produk, resep, produksi, dan penjualan).
+            </p>
+            <button
+              onClick={() => setIsResetConfirmOpen(true)}
+              disabled={isResetting}
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg border-2 border-slate-900 shadow-[2px_2px_0px_#0f172a] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              {isResetting ? 'Meriset...' : 'Reset ke Data Awal Pabrik'}
+            </button>
           </div>
-          <p className="text-xs text-rose-900 leading-relaxed">
-            Jika Anda ingin mengulang pengujian simulasi dari data awal (resep donat, stok tepung terigu, dan histori sampel), Anda dapat mereset data penyimpanan browser lokal kapan saja.
-          </p>
-          <button
-            onClick={() => setIsResetConfirmOpen(true)}
-            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg border-2 border-slate-900 shadow-[2px_2px_0px_#0f172a] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all flex items-center gap-2"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Reset ke Data Awal Pabrik
-          </button>
-        </div>
+        )}
       </div>
 
       <ConfirmationModal
         isOpen={isResetConfirmOpen}
         onClose={() => setIsResetConfirmOpen(false)}
         onConfirm={handleResetDemoData}
-        title="Reset Seluruh Data Lokal?"
-        description="Semua catatan mutasi, resep, dan penjualan yang Anda tambahkan di browser ini akan kembali ke data bawaan demo."
-        confirmText="Ya, Reset Data Sekarang"
+        title="Reset Seluruh Data Tenant?"
+        description="Semua data (bahan baku, produk, resep, produksi, penjualan, dan insight) akan dihapus dan diganti dengan data awal demo."
+        confirmText={isResetting ? 'Meriset...' : 'Ya, Reset Data Sekarang'}
         isDanger={true}
+        isLoading={isResetting}
       />
     </div>
   );
