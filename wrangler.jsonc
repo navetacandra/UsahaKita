@@ -27,5 +27,9 @@
 
   "observability": {
     "enabled": true
+  },
+
+  "build": {
+    "command": "node scripts/build-docs.cjs"
   }
 }

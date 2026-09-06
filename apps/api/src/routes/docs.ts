@@ -1,22 +1,15 @@
 import { Hono } from 'hono';
 import { swaggerUI } from '@hono/swagger-ui';
-import YAML from 'yaml';
-import openApiYaml from '../../../../docs/openapi.yaml?raw';
+import openApiDoc from '../../../../docs/openapi-content.json';
 
 const docs = new Hono();
-const parsedDoc = YAML.parse(openApiYaml);
 
 docs.get('/openapi.json', (c) => {
-  return c.json(parsedDoc);
+  return c.json(openApiDoc);
 });
 
 docs.get('/openapi.yaml', (c) => {
-  return new Response(openApiYaml, {
-    headers: {
-      'Content-Type': 'text/yaml; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600',
-    },
-  });
+  return c.json(openApiDoc);
 });
 
 docs.get('/swagger', swaggerUI({ url: '/docs/openapi.json' }));

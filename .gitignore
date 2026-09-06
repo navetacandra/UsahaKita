@@ -35,6 +35,7 @@ lerna-debug.log*
 
 # generated
 worker-configuration.d.ts
+docs/openapi-content.json
 
 # playwright
 test-results/
