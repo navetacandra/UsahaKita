@@ -2,6 +2,7 @@ export interface Env {
   AUTH_DO: DurableObjectNamespace;
   TENANT_DO: DurableObjectNamespace;
   AI_API_KEY?: string;
+  AI_API_KEYS?: string;
   AI_BASE_URL?: string;
   AI_MODEL?: string;
   ASSETS: Fetcher;
