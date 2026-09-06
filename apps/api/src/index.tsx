@@ -51,7 +51,15 @@ api.route('/insights', insights);
 app.route('/api/v1', api);
 app.route('/docs', docs);
 
-app.get('*', (c) => {
+app.get('*', async (c) => {
+  // Serve static assets from ASSETS binding, fall back to SPA HTML
+  const url = new URL(c.req.url);
+  if (url.pathname.startsWith('/assets/') || url.pathname === '/favicon.ico') {
+    return c.env.ASSETS.fetch(c.req.url);
+  }
+  // For SPA routes, fetch the actual index.html from assets (has correct hashed paths)
+  const indexRes = await c.env.ASSETS.fetch(new URL('/index.html', c.req.url).toString());
+  if (indexRes.status === 200) return indexRes;
   return c.html(SPA_HTML);
 });
 
