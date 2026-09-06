@@ -59,7 +59,7 @@ Return ONLY a JSON array. No markdown, no explanation. Format: [{"type":"INFO","
       },
     ],
     max_tokens: 4096,
-    temperature: 0.7,
+    temperature: 0.3,
   });
 
   if (aiResult.status === 'ok' && aiResult.reply) {

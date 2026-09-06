@@ -27,7 +27,7 @@ function getApiKeys(env: Env): string[] {
 
 export async function aiChat(env: Env, options: AiChatOptions): Promise<AiChatResult> {
   const baseUrl = (env.AI_BASE_URL || 'https://api.z.ai').replace(/\/+$/, '');
-  const model = env.AI_MODEL || 'glm-4.7-flash';
+  const models = env.AI_MODELS ? env.AI_MODELS.split(',') : ['glm-4.7-flash'];
   const keys = getApiKeys(env);
   const endpoint = `${baseUrl}/api/paas/v4/chat/completions`;
 
@@ -36,56 +36,60 @@ export async function aiChat(env: Env, options: AiChatOptions): Promise<AiChatRe
 
   const baseResult: Omit<AiChatResult, 'status'> = {
     provider: baseUrl.includes('z.ai') ? 'zhipu' : 'custom',
-    model,
+    model: null,
     session_id: sessionId,
     request_id: requestId,
   };
 
+
   // Try each key until one returns 2xx
-  for (let i = 0; i < keys.length; i++) {
-    const apiKey = keys[i];
-    const started = Date.now();
+  for(const model of models) {
+    baseResult.model = model;
+    for (let i = 0; i < keys.length; i++) {
+      const apiKey = keys[i];
+      const started = Date.now();
 
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'Accept-Language': 'id-ID,id',
-          'Accept': '*/*',
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: 'Always respond in Bahasa Indonesia. Never use English in your response. The prompt may be in English but your output must be entirely in Bahasa Indonesia.' },
-            ...options.messages,
-          ],
-          max_tokens: options.max_tokens || 4096,
-          temperature: options.temperature ?? 0.7,
-        }),
-        signal: AbortSignal.timeout(60000),
-      });
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            'Accept-Language': 'en-US,en',
+            'Accept': '*/*',
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: 'Always respond in Bahasa Indonesia. Never use English in your response. The prompt may be in English but your output must be entirely in Bahasa Indonesia.' },
+              ...options.messages,
+            ],
+            max_tokens: options.max_tokens || 4096,
+            temperature: options.temperature ?? 0.7,
+          }),
+          signal: AbortSignal.timeout(60000),
+        });
 
-      const latency = Date.now() - started;
-      const body = await response.json() as Record<string, unknown>;
+        const latency = Date.now() - started;
+        const body = await response.json() as Record<string, unknown>;
 
-      if (response.ok) {
-        const choices = (body as { choices?: { message: { content: string | null } }[] }).choices;
-        const reply = choices?.[0]?.message?.content || '';
-        return { ...baseResult, status: 'ok', reply, latency_ms: latency, api_key_index: i };
+        if (response.ok) {
+          const choices = (body as { choices?: { message: { content: string | null } }[] }).choices;
+          const reply = choices?.[0]?.message?.content || '';
+          return { ...baseResult, status: 'ok', reply, latency_ms: latency, api_key_index: i };
+        }
+
+        // Non-2xx — try next key
+        const err = body?.error as { message?: string; type?: string } | undefined;
+        baseResult.error_type = err?.type || 'unknown';
+        baseResult.error_message = err?.message || `HTTP ${response.status}`;
+        baseResult.http_status = response.status;
+        baseResult.latency_ms = latency;
+        baseResult.api_key_index = i;
+      } catch (e: unknown) {
+        baseResult.latency_ms = Date.now() - started;
+        baseResult.error_message = e instanceof Error ? e.message : 'Network error';
       }
-
-      // Non-2xx — try next key
-      const err = body?.error as { message?: string; type?: string } | undefined;
-      baseResult.error_type = err?.type || 'unknown';
-      baseResult.error_message = err?.message || `HTTP ${response.status}`;
-      baseResult.http_status = response.status;
-      baseResult.latency_ms = latency;
-      baseResult.api_key_index = i;
-    } catch (e: unknown) {
-      baseResult.latency_ms = Date.now() - started;
-      baseResult.error_message = e instanceof Error ? e.message : 'Network error';
     }
   }
 

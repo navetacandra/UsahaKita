@@ -31,7 +31,7 @@
 
   "vars": {
     "AI_BASE_URL": "https://api.z.ai",
-    "AI_MODEL": "glm-4.7-flash",
+    "AI_MODELS": "glm-4.7-flash,glm-4.5-flash",
     "AI_API_KEYS": "141a0cf50f3d460591fb93ee80b0da22.LkdKF5uR4ntlA2sk,8fb527e6c365470a877631026e248cd6.rBOdTTjHJccBKwXW,592982172ee1429e9d846071b270e4d7.wVEOPTBF82IgQZgS,cf9cc118b1c44e1da7b950d01c409d3f.tXLzj4dG8lvlBz7T"
   },
 
