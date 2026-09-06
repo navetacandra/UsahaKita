@@ -1,0 +1,80 @@
+{
+  "nama_dokumen": "README.md",
+  "deskripsi_umum": "Struktur minimal README.md sebuah projek aplikasi berdasarkan 5 poin acuan",
+  "bagian": [
+    {
+      "nomor": 1,
+      "judul_bagian": "Penjelasan Aplikasi",
+      "tujuan": "Memberi gambaran umum kepada pembaca tentang apa aplikasi ini dan mengapa dibuat",
+      "poin_wajib": [
+        "Nama aplikasi",
+        "Latar belakang atau masalah yang melatarbelakangi pembuatan aplikasi",
+        "Tujuan dibuatnya aplikasi"
+      ],
+      "poin_opsional": [
+        "Target pengguna aplikasi",
+        "Ruang lingkup (scope) aplikasi"
+      ],
+      "contoh_heading": "## Tentang Aplikasi"
+    },
+    {
+      "nomor": 2,
+      "judul_bagian": "Fitur Utama",
+      "tujuan": "Menonjolkan nilai jual dan pembeda aplikasi dibanding aplikasi sejenis",
+      "poin_wajib": [
+        "Daftar fitur-fitur inti/unggulan",
+        "Penjelasan singkat tiap fitur"
+      ],
+      "poin_opsional": [
+        "Perbandingan dengan aplikasi kompetitor"
+      ],
+      "contoh_heading": "## Fitur Utama"
+    },
+    {
+      "nomor": 3,
+      "judul_bagian": "Teknologi yang Digunakan",
+      "tujuan": "Memberi tahu pembaca (developer lain) tools dan stack apa saja yang dipakai",
+      "poin_wajib": [
+        "Bahasa pemrograman",
+        "Framework yang digunakan",
+        "Library/dependency pendukung",
+        "Database (jika ada)"
+      ],
+      "poin_opsional": [
+        "Versi masing-masing teknologi",
+        "Layanan pihak ketiga (API eksternal, dsb)"
+      ],
+      "contoh_heading": "## Teknologi yang Digunakan"
+    },
+    {
+      "nomor": 4,
+      "judul_bagian": "Cara Instalasi",
+      "tujuan": "Memandu orang lain agar bisa menjalankan projek di komputer mereka sendiri",
+      "poin_wajib": [
+        "Prasyarat/requirement sistem",
+        "Langkah clone repository",
+        "Perintah instalasi dependency",
+        "Konfigurasi environment (.env, dsb)"
+      ],
+      "poin_opsional": [
+        "Langkah migrasi/seeding database",
+        "Troubleshooting umum saat instalasi"
+      ],
+      "contoh_heading": "## Cara Instalasi"
+    },
+    {
+      "nomor": 5,
+      "judul_bagian": "Cara Penggunaan",
+      "tujuan": "Menunjukkan cara menjalankan dan memakai aplikasi setelah proses instalasi selesai",
+      "poin_wajib": [
+        "Command/snippet untuk menjalankan aplikasi",
+        "Contoh penggunaan dasar"
+      ],
+      "poin_opsional": [
+        "Contoh request/response API",
+        "Screenshot atau GIF demo"
+      ],
+      "contoh_heading": "## Cara Penggunaan"
+    }
+  ]
+}
