@@ -12,6 +12,7 @@ import stockOpname from './routes/stock-opname';
 import dashboard from './routes/dashboard';
 import insights from './routes/insights';
 import docs from './routes/docs';
+import dev from './routes/dev';
 
 const SPA_HTML = `<!doctype html>
 <html lang="id">
@@ -47,6 +48,7 @@ api.route('/sales', sales);
 api.route('/stock-opnames', stockOpname);
 api.route('/dashboard', dashboard);
 api.route('/insights', insights);
+api.route('/dev', dev);
 
 app.route('/api/v1', api);
 app.route('/docs', docs);
