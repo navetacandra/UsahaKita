@@ -47,7 +47,7 @@ UsahaKita hadir untuk menjawab masalah tersebut dengan sistem digital yang bisa 
 | **Riwayat Mutasi Stok** | Jejak lengkap setiap pergerakan stok (masuk/keluar) dengan filter dan pencarian |
 | **Stok Opname** | Cocokkan stok fisik dengan stok sistem, selisih otomatis terhitung |
 | **Dashboard Analitik** | Ringkasan penjualan, produksi, stok rendah, dan insight AI terbaru |
-| **AI Insight** | Analisis bisnis otomatis menggunakan AI (OpenCode free API) — developer bisa ganti model via env vars |
+| **AI Insight** | Analisis bisnis otomatis menggunakan AI (GLM Zhipu API) — developer bisa ganti model via env vars |
 | **Multi-Tenant** | Setiap usaha memiliki data terisolasi. Mendaftar = membuat usaha baru |
 | **Autentikasi** | Sistem login dengan session cookie, password di-hash dengan PBKDF2 |
 
@@ -78,7 +78,7 @@ UsahaKita hadir untuk menjawab masalah tersebut dengan sistem digital yang bisa 
 
 | Teknologi | Kegunaan |
 |-----------|----------|
-| **OpenCode AI API** | AI insight generation (configurable: `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`) |
+| **GLM Zhipu API** | AI insight generation with key rotation (configurable: `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEYS`) |
 | **Playwright** | End-to-end testing |
 | **Vitest** | Unit testing |
 | **Swagger UI** | API documentation (tersedia di `/docs/swagger`) |
@@ -98,7 +98,7 @@ Cloudflare Workers (Hono)
                                ai_insights
     │
     ▼
-OpenCode AI API (optional)
+GLM Zhipu API (optional, with key rotation)
 ```
 
 ---
@@ -128,15 +128,15 @@ pnpm install
 Buat file `.dev.vars` di root project (untuk local development):
 
 ```env
-# AI Provider (optional — default pakai OpenCode free API)
-AI_BASE_URL=https://opencode.ai
-AI_MODEL=mimo-v2.5-free
-AI_API_KEY=Bearer public
+# AI Provider (GLM Zhipu — default)
+AI_BASE_URL=https://api.z.ai
+AI_MODEL=glm-4.7-flash
+AI_API_KEYS=key1,key2,key3,key4
 
 # Untuk pakai OpenAI sebagai alternatif:
 # AI_BASE_URL=https://api.openai.com
 # AI_MODEL=gpt-4o-mini
-# AI_API_KEY=sk-your-openai-key-here
+# AI_API_KEYS=sk-your-openai-key-here
 ```
 
 ### Seed Data (Otomas)
@@ -409,8 +409,8 @@ Swagger UI tersedia di: `http://localhost:5173/docs/swagger`
                            │
                     ┌──────▼───────┐
                     │  Kirim ke    │
-                    │  OpenCode AI │
-                    │  API         │
+                    │  GLM API     │
+                    │  (key rotate)│
                     └──────┬───────┘
                            │
                     ┌──────▼───────┐
@@ -422,9 +422,10 @@ Swagger UI tersedia di: `http://localhost:5173/docs/swagger`
 **Detail:**
 1. User klik "Generate Insight AI"
 2. Backend mengumpulkan: metrics penjualan, top produk, variance produksi, data stok rendah
-3. Data dikirim ke AI provider (configurable via env vars)
-4. AI menghasilkan max 3 insight dalam format JSON
-5. Insight disimpan di `ai_insights` table dan ditampilkan sebagai kartu berwarna
+3. Data dikirim ke GLM API dengan **key rotation** — coba setiap key sampai 2xx
+4. AI menghasilkan max 3 insight dalam format JSON (judul & body dalam Bahasa Indonesia)
+5. Jika semua key gagal → return 502 error, tidak ada insight tersimpan
+6. Insight disimpan di `ai_insights` table dan ditampilkan sebagai kartu berwarna
 
 ---
 
@@ -493,6 +494,8 @@ Base URL: `/api/v1`
 |--------|----------|-----------|
 | `GET` | `/products/` | Daftar produk (search, pagination) |
 | `POST` | `/products/` | Tambah produk baru |
+| `PATCH` | `/products/:id` | Edit produk (nama, harga, stok min) |
+| `DELETE` | `/products/:id` | Sembunyikan produk (soft delete) |
 | `POST` | `/products/:id/outgoing` | Catat produk keluar (afkir/rusak) |
 | `GET` | `/products/:id/movements` | Riwayat mutasi produk |
 
@@ -543,24 +546,32 @@ Base URL: `/api/v1`
 | `/docs/swagger` | Swagger UI |
 | `/docs/openapi.json` | OpenAPI spec (JSON) |
 
+### Dev (No Auth)
+
+| Method | Endpoint | Deskripsi |
+|--------|----------|-----------|
+| `GET` | `/dev/chat` | Test AI provider connectivity |
+| `GET` | `/dev/chat/keys` | List masked API keys |
+| `POST` | `/dev/reset-data` | Reset tenant data (demo account only) |
+
 ---
 
 ## Konfigurasi AI Provider
 
-Insight AI menggunakan provider yang bisa dikonfigurasi via environment variables:
+Insight AI menggunakan provider yang bisa dikonfigurasi via environment variables. Mendukung **key rotation** — coba setiap API key sampai dapat 2xx.
 
 | Env Var | Default | Deskripsi |
 |---------|---------|-----------|
-| `AI_BASE_URL` | `https://opencode.ai` | Base URL API provider |
-| `AI_MODEL` | `mimo-v2.5-free` | Model identifier |
-| `AI_API_KEY` | `Bearer public` | Auth token |
+| `AI_BASE_URL` | `https://api.z.ai` | Base URL API provider |
+| `AI_MODEL` | `glm-4.7-flash` | Model identifier |
+| `AI_API_KEYS` | (4 GLM keys) | Comma-separated API keys |
 
 ### Contoh: Switch ke OpenAI
 
 ```env
 AI_BASE_URL=https://api.openai.com
 AI_MODEL=gpt-4o-mini
-AI_API_KEY=sk-your-key-here
+AI_API_KEYS=sk-your-key-here
 ```
 
 ### Contoh: Custom Provider
@@ -568,7 +579,7 @@ AI_API_KEY=sk-your-key-here
 ```env
 AI_BASE_URL=https://your-ai-provider.com/v1
 AI_MODEL=your-model-name
-AI_API_KEY=Bearer your-api-key
+AI_API_KEYS=your-api-key-1,your-api-key-2
 ```
 
 ---
@@ -643,6 +654,7 @@ UsahaKita/
 │   │       │   ├── auth-directory.ts
 │   │       │   └── tenant.ts
 │   │       ├── lib/                # Utilities
+│   │       │   ├── ai.ts           # AI client with key rotation
 │   │       │   ├── crypto.ts       # PBKDF2 hashing
 │   │       │   ├── id.ts           # ID generator
 │   │       │   ├── response.ts     # API response helpers
@@ -660,8 +672,9 @@ UsahaKita/
 │   │       │   ├── sales.ts
 │   │       │   ├── stock-opname.ts
 │   │       │   ├── dashboard.ts
-│   │       │   ├── insights.ts
-│   │       │   └── docs.ts
+│       │       │   ├── insights.ts
+│       │       │   ├── dev.ts
+│       │       │   └── docs.ts
 │   │       ├── types.ts            # TypeScript interfaces
 │   │       └── index.tsx           # App entry point
 │   └── web/
@@ -674,7 +687,8 @@ UsahaKita/
 │               ├── types/          # TypeScript types
 │               └── utils/          # Formatters, helpers
 ├── docs/                           # Documentation
-│   ├── opencode-zen.js            # AI API example
+│   ├── glm-request.sh             # GLM API example
+│   ├── opencode-zen.js            # OpenCode API example
 │   └── readme-content.json        # README structure guide
 ├── e2e/                            # Playwright E2E tests
 ├── scripts/                        # Build & demo scripts
