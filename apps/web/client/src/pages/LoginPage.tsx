@@ -51,20 +51,20 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
           <div className="flex items-start gap-2">
             <ShieldCheck className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold">Akun Demo Cloud:</p>
+              <p className="font-bold">Akun Demo:</p>
               <p className="text-slate-600 mt-0.5">
-                Email: <span className="font-mono font-semibold text-slate-900">demo@usahakita.com</span>
+                Email: <span className="font-mono font-semibold text-slate-900">owner@tokomaju.com</span>
               </p>
               <p className="text-slate-600">
-                Password: <span className="font-mono font-semibold text-slate-900">StrongPassword123!</span>
+                Password: <span className="font-mono font-semibold text-slate-900">password123</span>
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => {
-              setEmail('demo@usahakita.com');
-              setPassword('StrongPassword123!');
+              setEmail('owner@tokomaju.com');
+              setPassword('password123');
             }}
             className="w-full py-1.5 px-2.5 bg-white hover:bg-blue-100 border border-blue-900 rounded font-semibold text-blue-900 text-xs transition-colors"
           >

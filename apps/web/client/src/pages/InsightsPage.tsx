@@ -205,40 +205,43 @@ export function InsightsPage({ onNavigate }: InsightsPageProps) {
             <p className="text-[11px] text-slate-400">Klik tombol "Generate Insight AI" untuk menganalisis data bisnis Anda.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {aiInsights.map((insight) => (
-              <div key={insight.id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">
-                    {formatDate(insight.generated_at)}
-                    {insight.is_stale && (
-                      <span className="ml-2 text-amber-600">(data telah berubah)</span>
-                    )}
-                  </span>
-                  {insight.model_metadata && (
-                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                      {insight.model_metadata.provider}/{insight.model_metadata.model}
+          <div className="space-y-2">
+            {(() => {
+              const insight = aiInsights[0];
+              return (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      {formatDate(insight.generated_at)}
+                      {insight.is_stale && (
+                        <span className="ml-2 text-amber-600">(data telah berubah)</span>
+                      )}
                     </span>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {insight.content.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-3 rounded-xl border-2 shadow-[2px_2px_0px_#0f172a] space-y-1.5 ${insightColor(item.type)}`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        {insightIcon(item.type)}
-                        <h3 className="font-black text-slate-900 text-xs leading-snug">
-                          {item.title}
-                        </h3>
+                    {insight.model_metadata && (
+                      <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                        {insight.model_metadata.provider}/{insight.model_metadata.model}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {insight.content.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-3 rounded-xl border-2 shadow-[2px_2px_0px_#0f172a] space-y-1.5 ${insightColor(item.type)}`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {insightIcon(item.type)}
+                          <h3 className="font-black text-slate-900 text-xs leading-snug">
+                            {item.title}
+                          </h3>
+                        </div>
+                        <p className="text-[11px] text-slate-700 leading-relaxed">{item.body}</p>
                       </div>
-                      <p className="text-[11px] text-slate-700 leading-relaxed">{item.body}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
       </div>

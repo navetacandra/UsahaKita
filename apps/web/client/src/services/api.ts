@@ -1250,13 +1250,13 @@ export const api = {
   // AI Insights
   insights: {
     async list(): Promise<ApiResponse<Insight[]>> {
-      const res = await http<Insight[]>('/insights?limit=10');
+      const res = await http<Insight[]>('/insights?limit=1');
       if (res.data && res.data.success && Array.isArray(res.data.data)) {
         return res.data;
       }
 
       const store = getStore();
-      return { success: true, data: store.insights };
+      return { success: true, data: store.insights.slice(0, 1) };
     },
 
     async generate(period_from?: string, period_to?: string): Promise<ApiResponse<Insight>> {
