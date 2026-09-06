@@ -170,9 +170,10 @@ export interface Insight {
   id: string;
   generated_at: string;
   data_as_of: string;
-  is_stale?: boolean;
   content: InsightItem[];
+  is_stale: boolean;
   model_metadata?: { provider: string; model: string };
+  ai_error?: string;
 }
 
 export interface ApiResponse<T> {

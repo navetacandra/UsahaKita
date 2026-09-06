@@ -40,6 +40,7 @@ insights.post('/generate', async (c) => {
 
   let content: { type: string; title: string; body: string }[] = [];
   let modelMetadata: Record<string, string> = { provider: 'rule-based', model: 'builtin' };
+  let aiError = '';
 
   // Configurable AI provider — swap via env vars AI_BASE_URL, AI_MODEL, AI_API_KEY
   const aiBaseUrl = (c.env.AI_BASE_URL || 'https://opencode.ai').replace(/\/+$/, '');
@@ -59,49 +60,50 @@ insights.post('/generate', async (c) => {
         model: aiModel,
         messages: [
           {
-            role: 'system',
-            content: `Anda adalah asisten bisnis UMKM. Gunakan hanya fakta dari business context. Jangan mengarang angka. Prioritaskan insight yang actionable. Gunakan bahasa Indonesia yang sederhana. Maksimal 3 insight utama. Jika data tidak cukup, nyatakan keterbatasannya. Output HANYA JSON array dengan field: type (WARNING/INFO/POSITIVE), title, body. Tanpa markdown, tanpa penjelasan tambahan.`,
-          },
-          {
             role: 'user',
-            content: `Business context: ${JSON.stringify(context)}\n\nBuat insight bisnis dalam format JSON array.`,
+            content: `Return ONLY a JSON array. No markdown, no explanation. Format: [{"type":"INFO","title":"short title","body":"insight text"}]. Types: WARNING/INFO/POSITIVE. Max 3 items. Business data: ${JSON.stringify(context)}`,
           },
         ],
-        max_tokens: 2048,
+        max_tokens: 8192,
+        temperature: 0.3,
       }),
     });
 
-    if (response.ok) {
-      const aiResult = await response.json() as {
-        choices: { message: { content: string | null; reasoning_content?: string | null } }[];
-      };
-      const msg = aiResult.choices[0].message;
-      // Some models put output in reasoning_content when content is null
-      const raw = msg.content || msg.reasoning_content || '';
-      // Extract JSON array — handle markdown code blocks if present
+    const resBody = await response.json() as Record<string, unknown>;
+
+    if (!response.ok) {
+      const errObj = resBody?.error as { message?: string } | undefined;
+      aiError = errObj?.message || `HTTP ${response.status}`;
+    } else {
+      const choices = (resBody as { choices?: { message: { content: string | null; reasoning_content?: string | null } }[] }).choices;
+      const msg = choices?.[0]?.message;
+      const raw = msg?.content || msg?.reasoning_content || '';
       const jsonMatch = raw.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        if (Array.isArray(parsed)) {
-          content = parsed;
-          modelMetadata = { provider: aiBaseUrl.includes('opencode') ? 'opencode' : 'custom', model: aiModel };
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          content = parsed.filter((item: { type?: string; title?: string; body?: string }) =>
+            item.type && item.title && item.body
+          );
+          if (content.length > 0) {
+            modelMetadata = { provider: aiBaseUrl.includes('opencode') ? 'opencode' : 'custom', model: aiModel };
+          }
         }
       }
     }
-  } catch {
-    // AI unavailable — content stays empty
+  } catch (e: unknown) {
+    aiError = e instanceof Error ? e.message : 'Network error';
   }
 
   if (content.length === 0) {
-    content.push({
-      type: 'INFO',
-      title: 'Belum ada insight',
-      body: 'Jalankan generate ulang atau periksa koneksi AI provider.',
-    });
+    const body = aiError
+      ? `AI provider tidak tersedia: ${aiError}. Coba lagi nanti.`
+      : 'Jalankan generate ulang atau periksa koneksi AI provider.';
+    content.push({ type: 'INFO', title: 'Belum ada insight', body });
   }
 
   const insight = await tenantDo.createInsight(period_from, period_to, content, modelMetadata);
-  return c.json(successResponse(insight), 201);
+  return c.json(successResponse({ ...insight, ai_error: aiError || undefined }), 201);
 });
 
 export default insights;
