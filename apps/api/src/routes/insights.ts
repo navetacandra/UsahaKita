@@ -46,7 +46,16 @@ insights.post('/generate', async (c) => {
     messages: [
       {
         role: 'user',
-        content: `Return ONLY a JSON array. No markdown, no explanation. Format: [{"type":"INFO","title":"short title","body":"insight text"}]. Types: WARNING/INFO/POSITIVE. Max 3 items. Business data: ${JSON.stringify(context)}`,
+        content: `You are a business analyst for a UMKM (small business). Analyze the following business data and return insights.
+
+Business Context:
+- Period: ${context.period.from} to ${context.period.to}
+- Sales: ${JSON.stringify(context.metrics)}
+- Top Products: ${JSON.stringify(context.top_products)}
+- Production Variance: ${JSON.stringify(context.production_variance)}
+- Low Stock: ${JSON.stringify(context.low_stock)}
+
+Return ONLY a JSON array. No markdown, no explanation. Format: [{"type":"INFO","title":"short title","body":"insight text"}]. Types: WARNING/INFO/POSITIVE. Max 3 items. All titles and body text MUST be in Bahasa Indonesia.`,
       },
     ],
     max_tokens: 4096,

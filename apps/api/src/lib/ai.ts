@@ -58,13 +58,13 @@ export async function aiChat(env: Env, options: AiChatOptions): Promise<AiChatRe
         body: JSON.stringify({
           model,
           messages: [
-            { role: 'system', content: 'Anda adalah asisten bisnis UMKM. Selalu balas dalam Bahasa Indonesia. Jangan gunakan bahasa Inggris.' },
+            { role: 'system', content: 'Always respond in Bahasa Indonesia. Never use English in your response. The prompt may be in English but your output must be entirely in Bahasa Indonesia.' },
             ...options.messages,
           ],
           max_tokens: options.max_tokens || 4096,
           temperature: options.temperature ?? 0.7,
         }),
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(60000),
       });
 
       const latency = Date.now() - started;
