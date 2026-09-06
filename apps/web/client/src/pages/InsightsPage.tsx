@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Material, Product, ProductionRecord, Sale } from '../types';
-import { formatCurrency, formatNumber } from '../utils/formatters';
+import { Material, Product, ProductionRecord, Sale, Insight, InsightItem } from '../types';
+import { formatCurrency, formatNumber, formatDate } from '../utils/formatters';
+import { useToast } from '../context/ToastContext';
 import {
   TrendingUp,
   Sparkles,
@@ -12,6 +13,10 @@ import {
   ArrowRight,
   Package,
   Layers,
+  Bot,
+  RefreshCw,
+  CheckCircle2,
+  Info,
 } from 'lucide-react';
 
 interface InsightsPageProps {
@@ -19,11 +24,17 @@ interface InsightsPageProps {
 }
 
 export function InsightsPage({ onNavigate }: InsightsPageProps) {
+  const { showToast } = useToast();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [productions, setProductions] = useState<ProductionRecord[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // AI Insights state
+  const [aiInsights, setAiInsights] = useState<Insight[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [insightsLoading, setInsightsLoading] = useState(true);
 
   useEffect(() => {
     async function loadAll() {
@@ -46,7 +57,41 @@ export function InsightsPage({ onNavigate }: InsightsPageProps) {
       }
     }
     loadAll();
+    loadInsights();
   }, []);
+
+  const loadInsights = async () => {
+    setInsightsLoading(true);
+    try {
+      const res = await api.insights.list();
+      if (res.success && Array.isArray(res.data)) {
+        setAiInsights(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
+  const handleGenerateInsight = async () => {
+    setAiLoading(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+      const res = await api.insights.generate(thirtyDaysAgo, today);
+      if (res.success && res.data) {
+        showToast('success', 'Insight AI berhasil dibuat!');
+        loadInsights();
+      } else {
+        showToast('error', 'Gagal menghasilkan insight AI.');
+      }
+    } catch {
+      showToast('error', 'Terjadi kesalahan saat menghasilkan insight.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   // Compute best selling products
   const productSalesMap: Record<string, { name: string; totalQty: number; revenue: number }> = {};
@@ -87,50 +132,23 @@ export function InsightsPage({ onNavigate }: InsightsPageProps) {
 
   const topMaterialsUsed = Object.values(materialUsageMap).sort((a, b) => b.totalQty - a.totalQty);
 
-  // Critical Low Stock materials
-  const lowStockMaterials = (materials || []).filter((m) => m && m.current_stock <= m.minimum_stock);
-
-  // Smart actionable recommendations
-  const recommendations: Array<{
-    type: 'critical' | 'opportunity' | 'efficiency';
-    title: string;
-    desc: string;
-    actionLabel?: string;
-    actionPath?: string;
-  }> = [];
-
-  if (lowStockMaterials.length > 0) {
-    const matNames = lowStockMaterials.map((m) => m.name).join(', ');
-    recommendations.push({
-      type: 'critical',
-      title: `${lowStockMaterials.length} Bahan Baku Mendekati Habis`,
-      desc: `Bahan berikut telah menyentuh batas minimum stok: ${matNames}. Segera catat pembelian stok masuk agar lini produksi tidak terhenti.`,
-      actionLabel: 'Tambah Stok Bahan',
-      actionPath: '/inventory/materials',
-    });
-  }
-
-  if (bestSellingProducts.length > 0 && products.length > 0) {
-    const topProd = products.find((p) => p.name === bestSellingProducts[0].name);
-    if (topProd && topProd.current_stock < 10) {
-      recommendations.push({
-        type: 'opportunity',
-        title: `Produk Terlaris Rendah Stok: ${topProd.name}`,
-        desc: `${topProd.name} adalah item paling laku dengan penjualan ${bestSellingProducts[0].totalQty} unit, namun stok siap jual tinggal ${topProd.current_stock} ${topProd.unit}. Pertimbangkan jadwal produksi batch baru.`,
-        actionLabel: 'Mulai Produksi Baru',
-        actionPath: '/production/new',
-      });
+  const insightIcon = (type: InsightItem['type']) => {
+    switch (type) {
+      case 'WARNING': return <AlertTriangle className="w-4 h-4 text-rose-700" />;
+      case 'POSITIVE': return <CheckCircle2 className="w-4 h-4 text-emerald-700" />;
+      case 'INFO': return <Info className="w-4 h-4 text-blue-700" />;
+      default: return <Lightbulb className="w-4 h-4 text-amber-700" />;
     }
-  }
+  };
 
-  // General efficiency recommendation
-  recommendations.push({
-    type: 'efficiency',
-    title: 'Disiplin Stok Opname Berkala',
-    desc: 'Lakukan pencocokan stok fisik minimal seminggu sekali untuk mencegah kebocoran bahan baku dan menjamin keakuratan margin usaha.',
-    actionLabel: 'Lakukan Stok Opname',
-    actionPath: '/stock-opname',
-  });
+  const insightColor = (type: InsightItem['type']) => {
+    switch (type) {
+      case 'WARNING': return 'bg-rose-50 border-rose-900';
+      case 'POSITIVE': return 'bg-emerald-50 border-emerald-900';
+      case 'INFO': return 'bg-blue-50 border-blue-900';
+      default: return 'bg-amber-50 border-amber-900';
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -149,52 +167,75 @@ export function InsightsPage({ onNavigate }: InsightsPageProps) {
         </p>
       </div>
 
-      {/* Top Actionable Recommendations */}
-      <div className="space-y-3">
-        <h2 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
-          <Lightbulb className="w-4 h-4 text-amber-600" />
-          Rekomendasi Tindakan Operasional
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {recommendations.map((rec, idx) => (
-            <div
-              key={idx}
-              className={`p-4 rounded-xl border-2 shadow-[3px_3px_0px_#0f172a] space-y-2 flex flex-col justify-between ${
-                rec.type === 'critical'
-                  ? 'bg-rose-50 border-slate-900'
-                  : rec.type === 'opportunity'
-                  ? 'bg-amber-50 border-slate-900'
-                  : 'bg-blue-50 border-slate-900'
-              }`}
-            >
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-1.5">
-                  {rec.type === 'critical' ? (
-                    <AlertTriangle className="w-4 h-4 text-rose-700" />
-                  ) : rec.type === 'opportunity' ? (
-                    <Sparkles className="w-4 h-4 text-amber-700" />
-                  ) : (
-                    <Lightbulb className="w-4 h-4 text-blue-700" />
-                  )}
-                  <h3 className="font-black text-slate-900 text-xs sm:text-sm leading-snug">
-                    {rec.title}
-                  </h3>
-                </div>
-                <p className="text-xs text-slate-700 leading-relaxed">{rec.desc}</p>
-              </div>
-
-              {rec.actionPath && (
-                <button
-                  onClick={() => onNavigate(rec.actionPath!)}
-                  className="mt-2 text-xs font-black text-blue-800 hover:text-blue-950 inline-flex items-center gap-1"
-                >
-                  {rec.actionLabel} <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          ))}
+      {/* AI Insight Section */}
+      <div className="bg-white border-2 border-slate-900 shadow-[4px_4px_0px_#0f172a] rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
+          <div className="flex items-center gap-2">
+            <Bot className="w-5 h-5 text-blue-600" />
+            <h2 className="font-black text-slate-900 text-sm sm:text-base">
+              Analisis AI Otomatis
+            </h2>
+          </div>
+          <button
+            id="insight-generate-btn"
+            onClick={handleGenerateInsight}
+            disabled={aiLoading}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg border-2 border-slate-900 shadow-[2px_2px_0px_#0f172a] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all disabled:opacity-50"
+          >
+            {aiLoading ? (
+              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5" />
+            )}
+            {aiLoading ? 'Memproses...' : 'Generate Insight AI'}
+          </button>
         </div>
+
+        {insightsLoading ? (
+          <p className="text-xs text-slate-400 py-4 text-center">Memuat insight...</p>
+        ) : aiInsights.length === 0 ? (
+          <div className="text-center py-8 space-y-2">
+            <Bot className="w-10 h-10 text-slate-300 mx-auto" />
+            <p className="text-xs text-slate-500 font-medium">Belum ada insight AI.</p>
+            <p className="text-[11px] text-slate-400">Klik tombol "Generate Insight AI" untuk menganalisis data bisnis Anda.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {aiInsights.map((insight) => (
+              <div key={insight.id} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">
+                    {formatDate(insight.generated_at)}
+                    {insight.is_stale && (
+                      <span className="ml-2 text-amber-600">(data telah berubah)</span>
+                    )}
+                  </span>
+                  {insight.model_metadata && (
+                    <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                      {insight.model_metadata.provider}/{insight.model_metadata.model}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {insight.content.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded-xl border-2 shadow-[2px_2px_0px_#0f172a] space-y-1.5 ${insightColor(item.type)}`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {insightIcon(item.type)}
+                        <h3 className="font-black text-slate-900 text-xs leading-snug">
+                          {item.title}
+                        </h3>
+                      </div>
+                      <p className="text-[11px] text-slate-700 leading-relaxed">{item.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

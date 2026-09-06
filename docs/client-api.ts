@@ -219,31 +219,7 @@ const DEFAULT_DATA: StorageSchema = {
       created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
     },
   ],
-  insights: [
-    {
-      id: 'ins_01',
-      generated_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-      data_as_of: new Date(Date.now() - 3600000 * 13).toISOString(),
-      is_stale: false,
-      content: [
-        {
-          type: 'WARNING',
-          title: 'Stok Coklat Batang di bawah batas minimum',
-          body: 'Sisa stok Coklat Batang saat ini 1.2 kg (minimum 2 kg). Jika ingin memproduksi 20 pcs Donat Coklat, Anda membutuhkan 0.4 kg lagi.',
-        },
-        {
-          type: 'OPPORTUNITY',
-          title: 'Donat Coklat adalah produk terlaris minggu ini',
-          body: 'Penjualan Donat Coklat stabil tinggi. Pertimbangkan untuk menyiapkan batch produksi 40 pcs menjelang akhir pekan.',
-        },
-        {
-          type: 'TIP',
-          title: 'Lakukan stok opname berkala',
-          body: 'Cocokkan stok telur fisik dengan pencatatan sistem untuk mengantisipasi telur pecah atau susut.',
-        },
-      ],
-    },
-  ],
+  insights: [],
   latestBusinessActivityAt: new Date().toISOString(),
 };
 

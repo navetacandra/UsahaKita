@@ -161,7 +161,7 @@ export interface DashboardSummary {
 }
 
 export interface InsightItem {
-  type: 'WARNING' | 'OPPORTUNITY' | 'TIP';
+  type: 'WARNING' | 'INFO' | 'POSITIVE' | 'OPPORTUNITY' | 'TIP';
   title: string;
   body: string;
 }
@@ -172,6 +172,7 @@ export interface Insight {
   data_as_of: string;
   is_stale?: boolean;
   content: InsightItem[];
+  model_metadata?: { provider: string; model: string };
 }
 
 export interface ApiResponse<T> {

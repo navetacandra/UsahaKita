@@ -40,7 +40,6 @@ describe('getTenantSeedSQL', () => {
     expect(joined).toContain('boms');
     expect(joined).toContain('productions');
     expect(joined).toContain('sales');
-    expect(joined).toContain('ai_insights');
   });
 
   it('references correct IDs (mat_01..mat_05, prd_01..prd_02)', () => {

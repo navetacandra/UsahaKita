@@ -39,72 +39,66 @@ insights.post('/generate', async (c) => {
   };
 
   let content: { type: string; title: string; body: string }[] = [];
+  let modelMetadata: Record<string, string> = { provider: 'rule-based', model: 'builtin' };
 
-  const apiKey = c.env.AI_API_KEY;
-  if (apiKey) {
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: `Anda adalah asisten bisnis UMKM. Gunakan hanya fakta dari business context. Jangan mengarang angka. Prioritaskan insight yang actionable. Gunakan bahasa Indonesia yang sederhana. Maksimal 3 insight utama. Jika data tidak cukup, nyatakan keterbatasannya. Output dalam format JSON array dengan field: type (WARNING/INFO/POSITIVE), title, body.`,
-            },
-            {
-              role: 'user',
-              content: `Business context: ${JSON.stringify(context)}\n\nBuat insight bisnis.`,
-            },
-          ],
-          max_tokens: 500,
-        }),
-      });
+  // Configurable AI provider — swap via env vars AI_BASE_URL, AI_MODEL, AI_API_KEY
+  const aiBaseUrl = (c.env.AI_BASE_URL || 'https://opencode.ai').replace(/\/+$/, '');
+  const aiModel = c.env.AI_MODEL || 'mimo-v2.5-free';
+  const aiApiKey = c.env.AI_API_KEY || 'Bearer public';
 
-      if (response.ok) {
-        const aiResult = await response.json() as { choices: { message: { content: string } }[] };
-        const parsed = JSON.parse(aiResult.choices[0].message.content);
+  try {
+    const response = await fetch(`${aiBaseUrl}/zen/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': aiApiKey,
+        'x-opencode-client': 'usahakita',
+        'x-opencode-project': 'global',
+      },
+      body: JSON.stringify({
+        model: aiModel,
+        messages: [
+          {
+            role: 'system',
+            content: `Anda adalah asisten bisnis UMKM. Gunakan hanya fakta dari business context. Jangan mengarang angka. Prioritaskan insight yang actionable. Gunakan bahasa Indonesia yang sederhana. Maksimal 3 insight utama. Jika data tidak cukup, nyatakan keterbatasannya. Output HANYA JSON array dengan field: type (WARNING/INFO/POSITIVE), title, body. Tanpa markdown, tanpa penjelasan tambahan.`,
+          },
+          {
+            role: 'user',
+            content: `Business context: ${JSON.stringify(context)}\n\nBuat insight bisnis dalam format JSON array.`,
+          },
+        ],
+        max_tokens: 2048,
+      }),
+    });
+
+    if (response.ok) {
+      const aiResult = await response.json() as {
+        choices: { message: { content: string | null; reasoning_content?: string | null } }[];
+      };
+      const msg = aiResult.choices[0].message;
+      // Some models put output in reasoning_content when content is null
+      const raw = msg.content || msg.reasoning_content || '';
+      // Extract JSON array — handle markdown code blocks if present
+      const jsonMatch = raw.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
         if (Array.isArray(parsed)) {
           content = parsed;
+          modelMetadata = { provider: aiBaseUrl.includes('opencode') ? 'opencode' : 'custom', model: aiModel };
         }
       }
-    } catch {
-      // Fall through to rule-based
     }
+  } catch {
+    // AI unavailable — content stays empty
   }
 
   if (content.length === 0) {
-    const lowStock = (dashboard as Record<string, Record<string, number>>).low_stock;
-    if (lowStock.materials > 0) {
-      content.push({
-        type: 'WARNING',
-        title: `${lowStock.materials} material stok rendah`,
-        body: `Ada ${lowStock.materials} material yang stoknya di bawah batas minimum.`,
-      });
-    }
-    if (lowStock.products > 0) {
-      content.push({
-        type: 'WARNING',
-        title: `${lowStock.products} produk stok rendah`,
-        body: `Ada ${lowStock.products} produk yang stoknya di bawah batas minimum.`,
-      });
-    }
-    if (content.length === 0) {
-      content.push({
-        type: 'INFO',
-        title: 'Stok dalam kondisi baik',
-        body: 'Semua material dan produk memiliki stok yang memadai.',
-      });
-    }
+    content.push({
+      type: 'INFO',
+      title: 'Belum ada insight',
+      body: 'Jalankan generate ulang atau periksa koneksi AI provider.',
+    });
   }
-
-  const modelMetadata = apiKey
-    ? { provider: 'openai', model: 'gpt-4o-mini' }
-    : { provider: 'rule-based', model: 'builtin' };
 
   const insight = await tenantDo.createInsight(period_from, period_to, content, modelMetadata);
   return c.json(successResponse(insight), 201);

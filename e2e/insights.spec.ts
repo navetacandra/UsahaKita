@@ -6,10 +6,10 @@ test.describe('Insights', () => {
     await expect(page.locator('text=Insight & Rekomendasi Bisnis')).toBeVisible({ timeout: 10000 });
   });
 
-  test('insights shows recommendations section', async ({ authenticatedPage: page }) => {
+  test('insights shows AI analysis section', async ({ authenticatedPage: page }) => {
     await page.click('#tab-insights');
     await expect(page.locator('text=Insight & Rekomendasi Bisnis')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByRole('heading', { name: 'Rekomendasi Tindakan' })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Analisis AI Otomatis' })).toBeVisible({ timeout: 10000 });
   });
 
   test('insights shows top products section', async ({ authenticatedPage: page }) => {

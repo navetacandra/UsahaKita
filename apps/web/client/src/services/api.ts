@@ -1273,33 +1273,7 @@ export const api = {
         return res.data;
       }
 
-      // Local fallback
-      const store = getStore();
-      const newInsight: Insight = {
-        id: 'ins_' + Date.now().toString(36),
-        generated_at: new Date().toISOString(),
-        data_as_of: new Date().toISOString(),
-        content: [
-          {
-            type: 'WARNING',
-            title: 'Peringatan Stok Rendah',
-            body: 'Terdapat bahan baku atau produk yang berada di bawah stok minimum.',
-          },
-          {
-            type: 'OPPORTUNITY',
-            title: 'Optimalisasi Produksi',
-            body: 'Tingkatkan efisiensi bahan dengan menyesuaikan resep BoM secara berkala.',
-          },
-          {
-            type: 'TIP',
-            title: 'Rutin Lakukan Opname Fisik',
-            body: 'Cocokkan stok riil di gudang dengan catatan sistem UsahaKita.',
-          },
-        ],
-      };
-      store.insights.unshift(newInsight);
-      saveStore(store);
-      return { success: true, data: newInsight };
+      return { success: false, error: { code: 'AI_GENERATION_FAILED', message: 'Gagal menghasilkan insight AI.' } };
     },
   },
 

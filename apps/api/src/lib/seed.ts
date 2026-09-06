@@ -3,8 +3,6 @@ const TWO_DAYS_AGO = '2026-09-03T08:00:00.000Z';
 const FOUR_HOURS_AGO = '2026-09-05T04:00:00.000Z';
 const ONE_DAY_AGO = '2026-09-04T08:00:00.000Z';
 const TEN_DAYS_AGO = '2026-08-26T08:00:00.000Z';
-const TWELVE_HOURS_AGO = '2026-09-05T00:00:00.000Z';
-const THIRTEEN_HOURS_AGO = '2026-09-04T23:00:00.000Z';
 
 export function getAuthSeedSQL(): string[] {
   return [
@@ -86,11 +84,5 @@ export function getTenantSeedSQL(): string[] {
 
     `INSERT OR IGNORE INTO sale_items (sale_id, product_id, quantity, unit_price, subtotal)
      VALUES ('sale_01', 'prd_01', 5, 5000, 25000);`,
-
-    // AI Insights
-    `INSERT OR IGNORE INTO ai_insights (id, period_from, period_to, data_as_of, generated_at, prompt_version, content_json, model_metadata_json)
-     VALUES ('ins_01', '2026-09-01', '2026-09-05', '${THIRTEEN_HOURS_AGO}', '${TWELVE_HOURS_AGO}', '1.0.0',
-       '[{"type":"WARNING","title":"Stok Coklat Batang di bawah batas minimum","body":"Sisa stok Coklat Batang saat ini 1.2 kg (minimum 2 kg). Jika ingin memproduksi 20 pcs Donat Coklat, Anda membutuhkan 0.4 kg lagi."},{"type":"OPPORTUNITY","title":"Donat Coklat adalah produk terlaris minggu ini","body":"Penjualan Donat Coklat stabil tinggi. Pertimbangkan untuk menyiapkan batch produksi 40 pcs menjelang akhir pekan."},{"type":"TIP","title":"Lakukan stok opname berkala","body":"Cocokkan stok telur fisik dengan pencatatan sistem untuk mengantisipasi telur pecah atau susut."}]',
-       '{"provider":"rule-based","model":"builtin"}');`,
   ];
 }
